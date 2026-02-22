@@ -5,15 +5,15 @@ jobs:
   build:
     runs-on: windows-2022
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout Repo
+        uses: actions/checkout@v4
         with:
-          submodules: recursive
-          ref: '145.0.7632.75-1'
+          submodules: recursive # Không điền dòng ref ở đây để tránh lỗi Git Fetch
 
-      - name: Setup Sccache
+      - name: Setup Sccache (Bảo hiểm đứt gánh)
         uses: mozilla-actions/sccache-action@v0.0.3
 
-      - name: Cache Persistence
+      - name: Cache Persistence (Lưu trữ 10GB bộ đệm)
         uses: actions/cache@v4
         with:
           path: ~/.cache/sccache
@@ -23,7 +23,7 @@ jobs:
       - name: Clone Source
         run: python ungoogled-chromium/utils/clone.py -o build/src
 
-      - name: Apply Spoof Patcher
+      - name: Apply Spoof Patcher (Fake 24 tham số)
         run: python spoof_patcher.py
 
       - name: Official Build
@@ -34,8 +34,8 @@ jobs:
           python build.py
           python package.py
 
-      - name: Export Artifact
+      - name: Export Artifact (Tải về tại đây)
         uses: actions/upload-artifact@v4
         with:
-          name: Antidetect-Chromium-145
+          name: Antidetect-Chromium-Final
           path: build/*.zip
