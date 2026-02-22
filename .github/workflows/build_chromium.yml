@@ -10,16 +10,14 @@ jobs:
         with:
           submodules: recursive
 
-      # --- BƯỚC QUAN TRỌNG: SỬA LỖI LONG PATH & MISSING MODULE ---
-      - name: Setup Environment & Dependencies
+      - name: Fix Long Paths & Dependencies
+        # Giải quyết lỗi Filename too long và thiếu module httplib2
         run: |
-          # Bật hỗ trợ đường dẫn dài cho Git và Windows
           git config --global core.longpaths true
           reg add "HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\FileSystem" /v "LongPathsEnabled" /t REG_DWORD /d 1 /f
-          # Cài đặt httplib2 phiên bản chuẩn cho Chromium build
           python -m pip install httplib2==0.22.0 six
 
-      - name: Setup Sccache (Bảo hiểm đứt gánh)
+      - name: Setup Sccache
         uses: mozilla-actions/sccache-action@v0.0.3
 
       - name: Cache Persistence
@@ -32,13 +30,15 @@ jobs:
       - name: Clone Source
         run: python ungoogled-chromium/utils/clone.py -o build/src
 
-      - name: Apply Spoof Patcher (Fake 24 tham số chủ động)
+      - name: Apply Spoof Patcher
+        env:
+          PYTHONUTF8: 1 # Ép Python dùng UTF-8 để không bị lỗi Unicode khi in log
         run: python spoof_patcher.py
 
       - name: Official Build
         env:
           SCCACHE_GHA_ENABLED: "true"
-          DEPOT_TOOLS_WIN_TOOLCHAIN: "0" # Ép dùng toolchain hệ thống
+          DEPOT_TOOLS_WIN_TOOLCHAIN: "0"
         run: |
           echo 'cc_wrapper="sccache"' >> flags.windows.gn
           python build.py
