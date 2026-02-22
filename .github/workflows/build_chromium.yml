@@ -8,12 +8,18 @@ jobs:
       - name: Checkout Repo
         uses: actions/checkout@v4
         with:
-          submodules: recursive # Không điền dòng ref ở đây để tránh lỗi Git Fetch
+          submodules: recursive
+
+      # --- SỬA LỖI FILENAME TOO LONG ---
+      - name: Enable Long Paths
+        run: |
+          git config --global core.longpaths true
+          reg add "HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\FileSystem" /v "LongPathsEnabled" /t REG_DWORD /d 1 /f
 
       - name: Setup Sccache (Bảo hiểm đứt gánh)
         uses: mozilla-actions/sccache-action@v0.0.3
 
-      - name: Cache Persistence (Lưu trữ 10GB bộ đệm)
+      - name: Cache Persistence
         uses: actions/cache@v4
         with:
           path: ~/.cache/sccache
@@ -34,7 +40,7 @@ jobs:
           python build.py
           python package.py
 
-      - name: Export Artifact (Tải về tại đây)
+      - name: Export Artifact
         uses: actions/upload-artifact@v4
         with:
           name: Antidetect-Chromium-Final
