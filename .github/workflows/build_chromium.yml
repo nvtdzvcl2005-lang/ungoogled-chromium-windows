@@ -1,0 +1,41 @@
+name: Build Custom Chromium Antidetect
+on: [workflow_dispatch]
+
+jobs:
+  build:
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          submodules: recursive
+          ref: '145.0.7632.75-1'
+
+      - name: Setup Sccache
+        uses: mozilla-actions/sccache-action@v0.0.3
+
+      - name: Cache Persistence
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/sccache
+          key: sccache-${{ runner.os }}-${{ github.sha }}
+          restore-keys: sccache-${{ runner.os }}-
+
+      - name: Clone Source
+        run: python ungoogled-chromium/utils/clone.py -o build/src
+
+      - name: Apply Spoof Patcher
+        run: python spoof_patcher.py
+
+      - name: Official Build
+        env:
+          SCCACHE_GHA_ENABLED: "true"
+        run: |
+          echo 'cc_wrapper="sccache"' >> flags.windows.gn
+          python build.py
+          python package.py
+
+      - name: Export Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: Antidetect-Chromium-145
+          path: build/*.zip
