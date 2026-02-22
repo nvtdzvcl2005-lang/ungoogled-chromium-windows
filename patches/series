@@ -20,3 +20,8 @@ ungoogled-chromium/windows/windows-fix-licenses-gn-path.patch
 ungoogled-chromium/windows/windows-fix-building-with-rust.patch
 ungoogled-chromium/windows/windows-fix-remove-unused-preferences-fields.patch
 ungoogled-chromium/windows/windows-fix-missing-includes.patch
+extra/bromite/flag-fingerprinting-canvas-image-data-noise.patch
+extra/bromite/fingerprinting-flags-client-rects-and-measuretext.patch
+extra/inox-patchset/0019-disable-battery-status-service.patch
+extra/ungoogled-chromium/add-flag-to-spoof-webgl-renderer-info.patch
+extra/ungoogled-chromium/default-webrtc-ip-handling-policy.patch
