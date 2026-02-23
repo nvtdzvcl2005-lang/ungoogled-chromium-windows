@@ -35,13 +35,11 @@ jobs:
           PYTHONUTF8: 1
         run: python spoof_patcher.py
 
-      - name: Soi code (Chỉ chạy khi lỗi)
-        if: failure() && steps.patcher.outcome == 'failure'
+      - name: Soi code tận ổ (Nếu lỗi)
+        if: failure()
         run: |
           echo "--- SOI CODE NAVIGATOR_ID.CC ---"
-          powershell -Command "if (Test-Path build/src/third_party/blink/renderer/core/frame/navigator_id.cc) { Select-String -Path build/src/third_party/blink/renderer/core/frame/navigator_id.cc -Pattern 'hardwareConcurrency' -Context 10,10 } else { echo 'File not found' }"
-          echo "--- SOI CODE SCREEN.CC ---"
-          powershell -Command "if (Test-Path build/src/third_party/blink/renderer/core/frame/screen.cc) { Select-String -Path build/src/third_party/blink/renderer/core/frame/screen.cc -Pattern 'devicePixelRatio' -Context 10,10 } else { echo 'File not found' }"
+          powershell -Command "if (Test-Path build/src/third_party/blink/renderer/core/frame/navigator_id.cc) { Select-String -Path build/src/third_party/blink/renderer/core/frame/navigator_id.cc -Pattern 'hardwareConcurrency' -Context 15,15 } else { echo 'File not found' }"
 
       - name: Official Build
         env:
