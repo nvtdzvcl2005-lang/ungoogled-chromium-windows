@@ -11,7 +11,6 @@ jobs:
           submodules: recursive
 
       - name: Fix Long Paths & Dependencies
-        # Giải quyết lỗi Filename too long và thiếu module httplib2
         run: |
           git config --global core.longpaths true
           reg add "HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\FileSystem" /v "LongPathsEnabled" /t REG_DWORD /d 1 /f
@@ -31,9 +30,18 @@ jobs:
         run: python ungoogled-chromium/utils/clone.py -o build/src
 
       - name: Apply Spoof Patcher
+        id: patcher
         env:
-          PYTHONUTF8: 1 # Ép Python dùng UTF-8 để không bị lỗi Unicode khi in log
+          PYTHONUTF8: 1
         run: python spoof_patcher.py
+
+      - name: Soi code (Chỉ chạy khi lỗi)
+        if: failure() && steps.patcher.outcome == 'failure'
+        run: |
+          echo "--- SOI CODE NAVIGATOR_ID.CC ---"
+          powershell -Command "if (Test-Path build/src/third_party/blink/renderer/core/frame/navigator_id.cc) { Select-String -Path build/src/third_party/blink/renderer/core/frame/navigator_id.cc -Pattern 'hardwareConcurrency' -Context 10,10 } else { echo 'File not found' }"
+          echo "--- SOI CODE SCREEN.CC ---"
+          powershell -Command "if (Test-Path build/src/third_party/blink/renderer/core/frame/screen.cc) { Select-String -Path build/src/third_party/blink/renderer/core/frame/screen.cc -Pattern 'devicePixelRatio' -Context 10,10 } else { echo 'File not found' }"
 
       - name: Official Build
         env:
