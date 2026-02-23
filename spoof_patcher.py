@@ -8,7 +8,9 @@ SRC_ROOT = "build/src"
 
 def super_patch(file_path, keyword, inject_code):
     full_path = os.path.join(SRC_ROOT, file_path)
-    if not os.path.exists(full_path): return
+    if not os.path.exists(full_path):
+        print(f"[!] Bỏ qua: Không thấy {file_path}")
+        return
 
     with open(full_path, 'r', encoding='utf-8') as f:
         content = f.read()
@@ -16,8 +18,7 @@ def super_patch(file_path, keyword, inject_code):
     if 'base/command_line.h' not in content:
         content = '#include "base/command_line.h"\n' + content
 
-    # Regex tìm: [Tất cả những gì trước đó] keyword([đối số]) [const] {
-    # Chấp nhận mọi kiểu trả về (int, size_t, float, ScriptValue...)
+    # Regex tìm hàm linh hoạt: [Kiểu trả về] [TênLớp::]keyword([đối số]) [const] {
     pattern = r"[\w:<>]+\s+[\w:]*" + re.escape(keyword) + r"\s*\([^)]*\)\s*(?:const\s*)?\{"
     
     match = re.search(pattern, content, re.MULTILINE | re.DOTALL)
@@ -36,6 +37,7 @@ def super_patch(file_path, keyword, inject_code):
         print(f"[!] THẤT BẠI: Không thấy '{keyword}' trong {file_path}")
 
 # --- TIÊM CODE FAKE CHỦ ĐỘNG ---
+# Khớp 100% với tham số của anh Trường trong profile_manager.py
 super_patch("third_party/blink/renderer/core/frame/navigator_id.cc", "hardwareConcurrency", 'auto* cmd = base::CommandLine::ForCurrentProcess(); if (cmd->HasSwitch("fingerprint-hardware-concurrency")) return std::stoi(cmd->GetSwitchValueASCII("fingerprint-hardware-concurrency"));')
 super_patch("third_party/blink/renderer/core/frame/navigator_device_memory.cc", "deviceMemory", 'auto* cmd = base::CommandLine::ForCurrentProcess(); if (cmd->HasSwitch("fingerprint-device-memory")) return std::stof(cmd->GetSwitchValueASCII("fingerprint-device-memory"));')
 super_patch("third_party/blink/renderer/core/frame/screen.cc", "width", 'auto* cmd = base::CommandLine::ForCurrentProcess(); if (cmd->HasSwitch("fingerprint-screen-width")) return std::stoi(cmd->GetSwitchValueASCII("fingerprint-screen-width"));')
