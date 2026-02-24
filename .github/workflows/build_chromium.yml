@@ -10,25 +10,33 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Fix Environment
+      - name: Fix Environment & Install Rclone
         run: |
+          # Bật hỗ trợ đường dẫn dài
           git config --global core.longpaths true
           reg add "HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\FileSystem" /v "LongPathsEnabled" /t REG_DWORD /d 1 /f
+          # Cài đặt httplib2 cho depot_tools
           python -m pip install httplib2==0.22.0 six
+          # Cài đặt Rclone chuẩn bằng Chocolatey
+          choco install rclone -y
 
-      # SETUP DRIVE CACHE (ID: 1uznny42MrfIE4PSBOTEDfe34H46i6qkR)
-      - name: Setup Rclone
+      - name: Setup Rclone Config
         run: |
-          dotnet tool install --global rclone-bin
-          echo "[gdrive]" > rclone.conf
-          echo "type = drive" >> rclone.conf
-          echo "service_account_contents = ${{ secrets.GDRIVE_JSON }}" >> rclone.conf
-          echo "root_folder_id = 1uznny42MrfIE4PSBOTEDfe34H46i6qkR" >> rclone.conf
+          # Tạo file cấu hình rclone thủ công
+          mkdir "$env:USERPROFILE\.config\rclone" -Force
+          $config = @"
+          [gdrive]
+          type = drive
+          service_account_contents = ${{ secrets.GDRIVE_JSON }}
+          root_folder_id = 1uznny42MrfIE4PSBOTEDfe34H46i6qkR
+          "@
+          $config | Out-File -FilePath "$env:USERPROFILE\.config\rclone\rclone.conf" -Encoding ascii
 
       - name: Restore Cache from Drive
         run: |
           mkdir -p ~/.cache/sccache
-          rclone --config rclone.conf sync gdrive:sccache ~/.cache/sccache --verbose
+          rclone sync gdrive:sccache ~/.cache/sccache --verbose
+        continue-on-error: true # Bỏ qua nếu Drive chưa có cache lần đầu
 
       - name: Setup Sccache
         uses: mozilla-actions/sccache-action@v0.0.3
@@ -52,5 +60,7 @@ jobs:
       - name: Save Cache & Artifacts to Drive
         if: always()
         run: |
-          rclone --config rclone.conf sync ~/.cache/sccache gdrive:sccache --verbose
-          rclone --config rclone.conf copy build/ gdrive:Build_Thanh_Pham/ --include "*.zip" --include "*.exe"
+          # Đồng bộ ngược bộ nhớ đệm lên Drive 2TB
+          rclone sync ~/.cache/sccache gdrive:sccache --verbose
+          # Đẩy thành phẩm vào thư mục riêng
+          rclone copy build/ gdrive:Build_Thanh_Pham/ --include "*.zip" --include "*.exe"
