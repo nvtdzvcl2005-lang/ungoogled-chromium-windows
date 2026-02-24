@@ -20,12 +20,13 @@ jobs:
           $dir = Get-ChildItem -Directory -Filter "rclone-*" | Select-Object -First 1
           Move-Item "$($dir.FullName)\rclone.exe" . -Force
 
-      # DÙNG PYTHON GHI CONFIG ĐỂ TRÁNH LỖI MÃ HÓA (ENCODING)
+      # CHIẾN THUẬT MỚI: TÁCH FILE JSON VÀ FILE CONFIG
       - name: Generate Rclone Config
         env:
           GDRIVE_JSON: ${{ secrets.GDRIVE_JSON }}
         run: |
-          python -c "import os; content = '[gdrive]\ntype = drive\nservice_account_contents = ' + os.environ['GDRIVE_JSON'] + '\nroot_folder_id = 1uznny42MrfIE4PSBOTEDfe34H46i6qkR'; open('rclone.conf', 'w', encoding='utf-8').write(content)"
+          python -c "import os; open('sa.json', 'w', encoding='utf-8').write(os.environ['GDRIVE_JSON'])"
+          python -c "content = '[gdrive]\ntype = drive\nservice_account_file = sa.json\nroot_folder_id = 1uznny42MrfIE4PSBOTEDfe34H46i6qkR'; open('rclone.conf', 'w', encoding='utf-8').write(content)"
 
       - name: Restore Cache from Drive
         run: |
@@ -42,7 +43,7 @@ jobs:
       - name: Apply Spoof Patcher
         run: python spoof_patcher.py
 
-      - name: Official Build (Auto-Stop at 4h)
+      - name: Official Build (Tự ngắt sau 4 tiếng)
         env:
           SCCACHE_GHA_ENABLED: "false"
           SCCACHE_DIR: "~/.cache/sccache"
@@ -51,7 +52,7 @@ jobs:
           echo 'cc_wrapper="sccache"' >> flags.windows.gn
           $proc = Start-Process python -ArgumentList "build.py" -PassThru -NoNewWindow
           if (!($proc.WaitForExit(14400000))) { 
-            Write-Host "--- Hết 4 tiếng. Đang dừng để lưu cache! ---"
+            Write-Host "--- Đã đủ 4 tiếng. Đang dừng để lưu cache! ---"
             Stop-Process -Id $proc.Id -Force 
           }
           python package.py
