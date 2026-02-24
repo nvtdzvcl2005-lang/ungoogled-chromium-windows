@@ -1,4 +1,4 @@
-name: Build Custom Chromium Antidetect
+name: Build Antidetect Drive-Cache
 on: [workflow_dispatch]
 
 jobs:
@@ -10,48 +10,47 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Fix Long Paths & Dependencies
+      - name: Fix Environment
         run: |
           git config --global core.longpaths true
           reg add "HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\FileSystem" /v "LongPathsEnabled" /t REG_DWORD /d 1 /f
           python -m pip install httplib2==0.22.0 six
 
+      # SETUP DRIVE CACHE (ID: 1uznny42MrfIE4PSBOTEDfe34H46i6qkR)
+      - name: Setup Rclone
+        run: |
+          dotnet tool install --global rclone-bin
+          echo "[gdrive]" > rclone.conf
+          echo "type = drive" >> rclone.conf
+          echo "service_account_contents = ${{ secrets.GDRIVE_JSON }}" >> rclone.conf
+          echo "root_folder_id = 1uznny42MrfIE4PSBOTEDfe34H46i6qkR" >> rclone.conf
+
+      - name: Restore Cache from Drive
+        run: |
+          mkdir -p ~/.cache/sccache
+          rclone --config rclone.conf sync gdrive:sccache ~/.cache/sccache --verbose
+
       - name: Setup Sccache
         uses: mozilla-actions/sccache-action@v0.0.3
-
-      - name: Cache Persistence
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/sccache
-          key: sccache-${{ runner.os }}-${{ github.sha }}
-          restore-keys: sccache-${{ runner.os }}-
 
       - name: Clone Source
         run: python ungoogled-chromium/utils/clone.py -o build/src
 
       - name: Apply Spoof Patcher
-        id: patcher
-        env:
-          PYTHONUTF8: 1
+        env: { PYTHONUTF8: 1 }
         run: python spoof_patcher.py
-
-      - name: Soi code tận ổ (Nếu lỗi)
-        if: failure()
-        run: |
-          echo "--- SOI CODE NAVIGATOR_ID.CC ---"
-          powershell -Command "if (Test-Path build/src/third_party/blink/renderer/core/frame/navigator_id.cc) { Select-String -Path build/src/third_party/blink/renderer/core/frame/navigator_id.cc -Pattern 'hardwareConcurrency' -Context 15,15 } else { echo 'File not found' }"
 
       - name: Official Build
         env:
-          SCCACHE_GHA_ENABLED: "true"
-          DEPOT_TOOLS_WIN_TOOLCHAIN: "0"
+          SCCACHE_GHA_ENABLED: "false"
+          SCCACHE_DIR: "~/.cache/sccache"
         run: |
           echo 'cc_wrapper="sccache"' >> flags.windows.gn
           python build.py
           python package.py
 
-      - name: Export Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: Antidetect-Chromium-Final
-          path: build/*.zip
+      - name: Save Cache & Artifacts to Drive
+        if: always()
+        run: |
+          rclone --config rclone.conf sync ~/.cache/sccache gdrive:sccache --verbose
+          rclone --config rclone.conf copy build/ gdrive:Build_Thanh_Pham/ --include "*.zip" --include "*.exe"
