@@ -12,31 +12,25 @@ jobs:
 
       - name: Fix Environment & Install Rclone
         run: |
-          # Bật hỗ trợ đường dẫn dài
           git config --global core.longpaths true
           reg add "HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\FileSystem" /v "LongPathsEnabled" /t REG_DWORD /d 1 /f
-          # Cài đặt httplib2 cho depot_tools
           python -m pip install httplib2==0.22.0 six
-          # Cài đặt Rclone chuẩn bằng Chocolatey
           choco install rclone -y
 
       - name: Setup Rclone Config
+        shell: pwsh
         run: |
-          # Tạo file cấu hình rclone thủ công
-          mkdir "$env:USERPROFILE\.config\rclone" -Force
-          $config = @"
-          [gdrive]
-          type = drive
-          service_account_contents = ${{ secrets.GDRIVE_JSON }}
-          root_folder_id = 1uznny42MrfIE4PSBOTEDfe34H46i6qkR
-          "@
-          $config | Out-File -FilePath "$env:USERPROFILE\.config\rclone\rclone.conf" -Encoding ascii
+          # Tạo thư mục cấu hình
+          New-Item -Directory -Path "$env:USERPROFILE\.config\rclone" -Force
+          # Ghi file cấu hình bằng phương thức hệ thống để tránh lỗi mã hóa PowerShell
+          $config = "[gdrive]`ntype = drive`nservice_account_contents = ${{ secrets.GDRIVE_JSON }}`nroot_folder_id = 1uznny42MrfIE4PSBOTEDfe34H46i6qkR"
+          [System.IO.File]::WriteAllText("$env:USERPROFILE\.config\rclone\rclone.conf", $config)
 
       - name: Restore Cache from Drive
         run: |
           mkdir -p ~/.cache/sccache
           rclone sync gdrive:sccache ~/.cache/sccache --verbose
-        continue-on-error: true # Bỏ qua nếu Drive chưa có cache lần đầu
+        continue-on-error: true
 
       - name: Setup Sccache
         uses: mozilla-actions/sccache-action@v0.0.3
@@ -60,7 +54,5 @@ jobs:
       - name: Save Cache & Artifacts to Drive
         if: always()
         run: |
-          # Đồng bộ ngược bộ nhớ đệm lên Drive 2TB
           rclone sync ~/.cache/sccache gdrive:sccache --verbose
-          # Đẩy thành phẩm vào thư mục riêng
           rclone copy build/ gdrive:Build_Thanh_Pham/ --include "*.zip" --include "*.exe"
