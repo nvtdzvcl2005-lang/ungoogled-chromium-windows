@@ -18,13 +18,21 @@ jobs:
           choco install rclone -y
 
       - name: Setup Rclone Config
+        env:
+          # Đưa JSON vào biến môi trường để né lỗi Parser của PowerShell
+          GDRIVE_SECRET: ${{ secrets.GDRIVE_JSON }}
         shell: pwsh
         run: |
-          # Tạo thư mục cấu hình
-          New-Item -Directory -Path "$env:USERPROFILE\.config\rclone" -Force
-          # Ghi file cấu hình bằng phương thức hệ thống để tránh lỗi mã hóa PowerShell
-          $config = "[gdrive]`ntype = drive`nservice_account_contents = ${{ secrets.GDRIVE_JSON }}`nroot_folder_id = 1uznny42MrfIE4PSBOTEDfe34H46i6qkR"
-          [System.IO.File]::WriteAllText("$env:USERPROFILE\.config\rclone\rclone.conf", $config)
+          # Tạo thư mục rclone trong AppData (nơi Windows mặc định tìm kiếm)
+          $rcloneDir = "$env:AppData\rclone"
+          if (!(Test-Path $rcloneDir)) { New-Item -Directory -Path $rcloneDir -Force }
+          
+          # Xây dựng nội dung file cấu hình
+          $configContent = "[gdrive]`ntype = drive`nservice_account_contents = $env:GDRIVE_SECRET`nroot_folder_id = 1uznny42MrfIE4PSBOTEDfe34H46i6qkR"
+          
+          # Ghi file với mã hóa UTF8 không có BOM (chuẩn cho Rclone)
+          [System.IO.File]::WriteAllText("$rcloneDir\rclone.conf", $configContent)
+          echo "Cấu hình Rclone hoàn tất tại $rcloneDir\rclone.conf"
 
       - name: Restore Cache from Drive
         run: |
