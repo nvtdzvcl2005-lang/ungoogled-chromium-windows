@@ -4,6 +4,12 @@ on: [workflow_dispatch]
 jobs:
   build:
     runs-on: windows-2022
+    env:
+      # Cấu hình Rclone trực tiếp từ biến môi trường (Né sạch lỗi parse file)
+      RCLONE_CONFIG_GDRIVE_TYPE: drive
+      RCLONE_CONFIG_GDRIVE_SERVICE_ACCOUNT_CONTENTS: ${{ secrets.GDRIVE_JSON }}
+      RCLONE_CONFIG_GDRIVE_ROOT_FOLDER_ID: 1uznny42MrfIE4PSBOTEDfe34H46i6qkR
+      PYTHONUTF8: 1
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v4
@@ -12,32 +18,14 @@ jobs:
 
       - name: Fix Environment & Download Rclone
         run: |
-          # Bật hỗ trợ đường dẫn dài
           git config --global core.longpaths true
           reg add "HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\FileSystem" /v "LongPathsEnabled" /t REG_DWORD /d 1 /f
-          # Cài đặt httplib2 cho depot_tools
           python -m pip install httplib2==0.22.0 six
-          # Tải Rclone trực tiếp
+          # Tải nhanh rclone.exe
           curl -L https://downloads.rclone.org/rclone-current-windows-amd64.zip -o rclone.zip
           powershell -Command "Expand-Archive rclone.zip -DestinationPath ."
           $dir = Get-ChildItem -Directory -Filter "rclone-*" | Select-Object -First 1
           Move-Item "$($dir.FullName)\rclone.exe" . -Force
-
-      - name: Setup Rclone Config
-        env:
-          GDRIVE_SECRET: ${{ secrets.GDRIVE_JSON }}
-        shell: pwsh
-        run: |
-          $rcloneDir = "$env:AppData\rclone"
-          # SỬA LỖI: Dùng -ItemType Directory chuẩn PowerShell
-          if (!(Test-Path $rcloneDir)) { New-Item -ItemType Directory -Path $rcloneDir -Force }
-          
-          # Xây dựng nội dung file cấu hình
-          $configContent = "[gdrive]`ntype = drive`nservice_account_contents = $env:GDRIVE_SECRET`nroot_folder_id = 1uznny42MrfIE4PSBOTEDfe34H46i6qkR"
-          
-          # Ghi file sạch (UTF8 no BOM)
-          [System.IO.File]::WriteAllText("$rcloneDir\rclone.conf", $configContent)
-          echo "Cấu hình Rclone thành công tại $rcloneDir\rclone.conf"
 
       - name: Restore Cache from Drive
         run: |
@@ -52,7 +40,6 @@ jobs:
         run: python ungoogled-chromium/utils/clone.py -o build/src
 
       - name: Apply Spoof Patcher
-        env: { PYTHONUTF8: 1 }
         run: python spoof_patcher.py
 
       - name: Official Build
