@@ -4,12 +4,6 @@ on: [workflow_dispatch]
 jobs:
   build:
     runs-on: windows-2022
-    env:
-      # Cấu hình Rclone trực tiếp từ biến môi trường (Né sạch lỗi parse file)
-      RCLONE_CONFIG_GDRIVE_TYPE: drive
-      RCLONE_CONFIG_GDRIVE_SERVICE_ACCOUNT_CONTENTS: ${{ secrets.GDRIVE_JSON }}
-      RCLONE_CONFIG_GDRIVE_ROOT_FOLDER_ID: 1uznny42MrfIE4PSBOTEDfe34H46i6qkR
-      PYTHONUTF8: 1
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v4
@@ -21,16 +15,17 @@ jobs:
           git config --global core.longpaths true
           reg add "HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\FileSystem" /v "LongPathsEnabled" /t REG_DWORD /d 1 /f
           python -m pip install httplib2==0.22.0 six
-          # Tải nhanh rclone.exe
           curl -L https://downloads.rclone.org/rclone-current-windows-amd64.zip -o rclone.zip
           powershell -Command "Expand-Archive rclone.zip -DestinationPath ."
           $dir = Get-ChildItem -Directory -Filter "rclone-*" | Select-Object -First 1
           Move-Item "$($dir.FullName)\rclone.exe" . -Force
 
       - name: Restore Cache from Drive
+        env:
+          GDRIVE_JSON: ${{ secrets.GDRIVE_JSON }}
         run: |
           mkdir -p ~/.cache/sccache
-          ./rclone sync gdrive:sccache ~/.cache/sccache --verbose
+          ./rclone sync :drive,service_account_contents="$env:GDRIVE_JSON",root_folder_id="1uznny42MrfIE4PSBOTEDfe34H46i6qkR":sccache ~/.cache/sccache --verbose
         continue-on-error: true
 
       - name: Setup Sccache
@@ -42,17 +37,25 @@ jobs:
       - name: Apply Spoof Patcher
         run: python spoof_patcher.py
 
-      - name: Official Build
+      - name: Official Build (Auto-Stop at 4h)
         env:
           SCCACHE_GHA_ENABLED: "false"
           SCCACHE_DIR: "~/.cache/sccache"
+        shell: pwsh
         run: |
           echo 'cc_wrapper="sccache"' >> flags.windows.gn
-          python build.py
+          $proc = Start-Process python -ArgumentList "build.py" -PassThru -NoNewWindow
+          if (!($proc.WaitForExit(14400000))) { 
+            Write-Host "--- 4 TIẾNG ĐÃ HẾT. ĐANG DỪNG ĐỂ CẤT CACHE! ---"
+            Stop-Process -Id $proc.Id -Force 
+          }
           python package.py
+        continue-on-error: true
 
-      - name: Save Cache & Artifacts to Drive
+      - name: Save Cache & Artifacts (Always Run)
         if: always()
+        env:
+          GDRIVE_JSON: ${{ secrets.GDRIVE_JSON }}
         run: |
-          ./rclone sync ~/.cache/sccache gdrive:sccache --verbose
-          ./rclone copy build/ gdrive:Build_Thanh_Pham/ --include "*.zip" --include "*.exe"
+          ./rclone sync ~/.cache/sccache :drive,service_account_contents="$env:GDRIVE_JSON",root_folder_id="1uznny42MrfIE4PSBOTEDfe34H46i6qkR":sccache --verbose
+          ./rclone copy build/ :drive,service_account_contents="$env:GDRIVE_JSON",root_folder_id="1uznny42MrfIE4PSBOTEDfe34H46i6qkR":Build_Thanh_Pham/ --include "*.zip" --include "*.exe"
