@@ -12,32 +12,35 @@ jobs:
 
       - name: Fix Environment & Install Rclone
         run: |
+          # Bật hỗ trợ đường dẫn dài
           git config --global core.longpaths true
           reg add "HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\FileSystem" /v "LongPathsEnabled" /t REG_DWORD /d 1 /f
+          # Cài đặt httplib2 cho depot_tools
           python -m pip install httplib2==0.22.0 six
-          choco install rclone -y
+          # Tải Rclone trực tiếp để né lỗi 504 Chocolatey
+          curl -L https://downloads.rclone.org/rclone-current-windows-amd64.zip -o rclone.zip
+          powershell -Command "Expand-Archive rclone.zip -DestinationPath ."
+          $dir = Get-ChildItem -Directory -Filter "rclone-*" | Select-Object -First 1
+          Move-Item "$($dir.FullName)\rclone.exe" .
+          # Thêm đường dẫn vào hệ thống
+          echo "$pwd" >> $env:GITHUB_PATH
 
       - name: Setup Rclone Config
         env:
-          # Đưa JSON vào biến môi trường để né lỗi Parser của PowerShell
           GDRIVE_SECRET: ${{ secrets.GDRIVE_JSON }}
         shell: pwsh
         run: |
-          # Tạo thư mục rclone trong AppData (nơi Windows mặc định tìm kiếm)
           $rcloneDir = "$env:AppData\rclone"
           if (!(Test-Path $rcloneDir)) { New-Item -Directory -Path $rcloneDir -Force }
-          
-          # Xây dựng nội dung file cấu hình
+          # Ghi file cấu hình dùng biến môi trường để né lỗi Parser dấu ngoặc nhọn { }
           $configContent = "[gdrive]`ntype = drive`nservice_account_contents = $env:GDRIVE_SECRET`nroot_folder_id = 1uznny42MrfIE4PSBOTEDfe34H46i6qkR"
-          
-          # Ghi file với mã hóa UTF8 không có BOM (chuẩn cho Rclone)
           [System.IO.File]::WriteAllText("$rcloneDir\rclone.conf", $configContent)
-          echo "Cấu hình Rclone hoàn tất tại $rcloneDir\rclone.conf"
+          echo "Cấu hình Rclone hoàn tất!"
 
       - name: Restore Cache from Drive
         run: |
           mkdir -p ~/.cache/sccache
-          rclone sync gdrive:sccache ~/.cache/sccache --verbose
+          ./rclone sync gdrive:sccache ~/.cache/sccache --verbose
         continue-on-error: true
 
       - name: Setup Sccache
@@ -62,5 +65,5 @@ jobs:
       - name: Save Cache & Artifacts to Drive
         if: always()
         run: |
-          rclone sync ~/.cache/sccache gdrive:sccache --verbose
-          rclone copy build/ gdrive:Build_Thanh_Pham/ --include "*.zip" --include "*.exe"
+          ./rclone sync ~/.cache/sccache gdrive:sccache --verbose
+          ./rclone copy build/ gdrive:Build_Thanh_Pham/ --include "*.zip" --include "*.exe"
