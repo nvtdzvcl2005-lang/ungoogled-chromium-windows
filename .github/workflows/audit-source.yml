@@ -1,0 +1,56 @@
+name: Audit Source Files
+on: [workflow_dispatch]
+
+jobs:
+  audit:
+    runs-on: windows-2022
+    timeout-minutes: 120
+
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v4
+
+      - name: Fix LongPaths
+        run: |
+          git config --global core.longpaths true
+          reg add "HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\FileSystem" /v "LongPathsEnabled" /t REG_DWORD /d 1 /f
+          python -m pip install httplib2==0.22.0 six
+
+      - name: Clone Source Chromium 145
+        run: python ungoogled-chromium/utils/clone.py -o build/src
+
+      - name: Copy các file cần audit
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Path audit_files -Force
+
+          $files = @(
+            "third_party/blink/renderer/core/frame/navigator_concurrent_hardware.cc",
+            "third_party/blink/renderer/core/execution_context/navigator_base.cc",
+            "third_party/blink/renderer/modules/touch_events/navigator_touch_points.cc",
+            "third_party/blink/renderer/core/frame/navigator.cc",
+            "third_party/blink/renderer/core/frame/navigator_device_memory.cc",
+            "third_party/blink/renderer/core/frame/local_dom_window.cc",
+            "third_party/blink/renderer/core/frame/screen.cc",
+            "third_party/blink/renderer/modules/webgl/webgl_rendering_context_base.cc",
+            "third_party/blink/renderer/core/frame/navigator_language.cc",
+            "third_party/blink/renderer/modules/battery/battery_manager.cc"
+          )
+
+          foreach ($f in $files) {
+            $src  = "build/src/$f"
+            $name = Split-Path $f -Leaf
+            if (Test-Path $src) {
+              Copy-Item $src "audit_files/$name"
+              Write-Host "[OK]  $name"
+            } else {
+              Write-Host "[!!] KHONG CO: $f"
+            }
+          }
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: source-files-audit
+          path: audit_files/
+          retention-days: 7
