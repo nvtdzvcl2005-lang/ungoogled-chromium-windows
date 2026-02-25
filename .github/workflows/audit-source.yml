@@ -9,12 +9,26 @@ jobs:
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
       - name: Fix LongPaths
         run: |
           git config --global core.longpaths true
           reg add "HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\FileSystem" /v "LongPathsEnabled" /t REG_DWORD /d 1 /f
           python -m pip install httplib2==0.22.0 six
+
+      - name: Kiểm tra và chuẩn bị ungoogled-chromium
+        shell: pwsh
+        run: |
+          # Kiểm tra clone.py có tồn tại không
+          if (Test-Path "ungoogled-chromium/utils/clone.py") {
+            Write-Host "[OK] clone.py da co san"
+          } else {
+            Write-Host "[!!] Chua co ungoogled-chromium, dang clone..."
+            git clone https://github.com/ungoogled-software/ungoogled-chromium.git ungoogled-chromium
+            Write-Host "[OK] Clone xong"
+          }
 
       - name: Clone Source Chromium 145
         run: python ungoogled-chromium/utils/clone.py -o build/src
