@@ -1,18 +1,1736 @@
-QUET TOAN BO BLINK TIM maxTouchPoints
+QUET TOAN BO BLINK - AUDIT FINGERPRINT
 ============================================================
 
-=== navigator_events.cc | maxTouchPoints | dong 40 ===
-PATH: third_party\blink\renderer\core\events\navigator_events.cc
-namespace blink {
+============================================================
+TIM: canvas_toDataURL  (Canvas fingerprint - toDataURL)
+============================================================
+--- html_canvas_element.cc | dong 1351 ---
+PATH: third_party\blink\renderer\core\html\canvas\html_canvas_element.cc
+}
 
-int32_t NavigatorEvents::maxTouchPoints(Navigator& navigator) {
-  LocalDOMWindow* window = navigator.DomWindow();
-  return window ? window->GetFrame()->GetSettings()->GetMaxTouchPoints() : 0;
+String HTMLCanvasElement::toDataURL(const String& mime_type,
+                                    const ScriptValue& quality_argument,
+                                    ExceptionState& exception_state) const {
+  if (ContextHasOpenLayers(context_)) {
+    exception_state.ThrowDOMException(
+        DOMExceptionCode::kInvalidStateError,
+        "`toDataURL()` cannot be called with open layers.");
+    return String();
+  }
+
+  if (!OriginClean()) {
+    exception_state.ThrowSecurityError("Tainted canvases may not be exported.");
+    return String();
+  }
+
+  double quality = kUndefinedQualityValue;
+  if (!quality_argument.IsEmpty()) {
+    v8::Local<v8::Value> v8_value = quality_argument.V8Value();
+    if (v8_value->IsNumber())
+      quality = v8_value.As<v8::Number>()->Value();
+  }
+  return ToDataURLInternal(mime_type, quality, kBackBuffer);
+}
+
+void HTMLCanvasElement::toBlob(V8BlobCallback* callback,
+                               const String& mime_type,
+                               const ScriptValue& quality_argument,
+                               ExceptionState& exception_state) {
+  if (!OriginClean()) {
+    exception_state.ThrowSecurityError("Tainted canvases may not be exported.");
+    return;
+  }
+
+  if (!GetExecutionContext())
+    return;
+
+
+--- html_canvas_element.cc | dong 1357 ---
+PATH: third_party\blink\renderer\core\html\canvas\html_canvas_element.cc
+    exception_state.ThrowDOMException(
+        DOMExceptionCode::kInvalidStateError,
+        "`toDataURL()` cannot be called with open layers.");
+    return String();
+  }
+
+  if (!OriginClean()) {
+    exception_state.ThrowSecurityError("Tainted canvases may not be exported.");
+    return String();
+  }
+
+  double quality = kUndefinedQualityValue;
+  if (!quality_argument.IsEmpty()) {
+    v8::Local<v8::Value> v8_value = quality_argument.V8Value();
+    if (v8_value->IsNumber())
+      quality = v8_value.As<v8::Number>()->Value();
+  }
+  return ToDataURLInternal(mime_type, quality, kBackBuffer);
+}
+
+void HTMLCanvasElement::toBlob(V8BlobCallback* callback,
+                               const String& mime_type,
+                               const ScriptValue& quality_argument,
+                               ExceptionState& exception_state) {
+  if (!OriginClean()) {
+    exception_state.ThrowSecurityError("Tainted canvases may not be exported.");
+    return;
+  }
+
+  if (!GetExecutionContext())
+    return;
+
+  if (ContextHasOpenLayers(context_)) {
+    exception_state.ThrowDOMException(
+        DOMExceptionCode::kInvalidStateError,
+        "`toBlob()` cannot be called with open layers.");
+    return;
+
+
+--- canvas_rendering_context_2d_api_test.cc | dong 518 ---
+PATH: third_party\blink\renderer\modules\canvas\canvas2d\canvas_rendering_context_2d_api_test.cc
+  // Throws inside layers:
+  DummyExceptionStateForTesting exception_state;
+  CanvasElement().toDataURL(/*mime_type=*/"image/png", exception_state);
+  EXPECT_EQ(exception_state.CodeAs<DOMExceptionCode>(),
+            DOMExceptionCode::kInvalidStateError);
+
+  Context2D()->endLayer(no_exception);
+
+  // Doesn't throw outside layers:
+  CanvasElement().toDataURL(/*mime_type=*/"image/png", no_exception);
+}
+
+// Checks `drawMesh` throws an exception if called inside a layer.
+TEST_F(CanvasRenderingContext2DAPITest, UnclosedLayerDrawMesh) {
+  ScopedCanvas2dLayersForTest layer_feature(/*enabled=*/true);
+  CreateContext(kNonOpaque);
+
+  NonThrowableExceptionState no_exception;
+  auto* image = MakeGarbageCollected<V8CanvasImageSource>(&CanvasElement());
+
+  const Mesh2DVertexBuffer* vbuf = MakeGarbageCollected<Mesh2DVertexBuffer>(
+      base::MakeRefCounted<cc::RefCountedBuffer<SkPoint>>(
+          std::vector<SkPoint>{{0, 0}, {100, 0}, {100, 100}}));
+  const Mesh2DUVBuffer* uvbuf = MakeGarbageCollected<Mesh2DUVBuffer>(
+      base::MakeRefCounted<cc::RefCountedBuffer<SkPoint>>(
+          std::vector<SkPoint>{{0, 0}, {1, 0}, {1, 1}}));
+  const Mesh2DIndexBuffer* ibuf = MakeGarbageCollected<Mesh2DIndexBuffer>(
+      base::MakeRefCounted<cc::RefCountedBuffer<uint16_t>>(
+          std::vector<uint16_t>{0, 1, 2}));
+
+  Context2D()->beginLayer(GetScriptState(), BeginLayerOptions::Create(),
+                          no_exception);
+
+  // Throws inside layers:
+  DummyExceptionStateForTesting exception_state;
+  Context2D()->drawMesh(vbuf, uvbuf, ibuf, image, exception_state);
+  EXPECT_EQ(exception_state.CodeAs<DOMExceptionCode>(),
+
+
+--- canvas_rendering_context_2d_api_test.cc | dong 525 ---
+PATH: third_party\blink\renderer\modules\canvas\canvas2d\canvas_rendering_context_2d_api_test.cc
+
+  // Doesn't throw outside layers:
+  CanvasElement().toDataURL(/*mime_type=*/"image/png", no_exception);
+}
+
+// Checks `drawMesh` throws an exception if called inside a layer.
+TEST_F(CanvasRenderingContext2DAPITest, UnclosedLayerDrawMesh) {
+  ScopedCanvas2dLayersForTest layer_feature(/*enabled=*/true);
+  CreateContext(kNonOpaque);
+
+  NonThrowableExceptionState no_exception;
+  auto* image = MakeGarbageCollected<V8CanvasImageSource>(&CanvasElement());
+
+  const Mesh2DVertexBuffer* vbuf = MakeGarbageCollected<Mesh2DVertexBuffer>(
+      base::MakeRefCounted<cc::RefCountedBuffer<SkPoint>>(
+          std::vector<SkPoint>{{0, 0}, {100, 0}, {100, 100}}));
+  const Mesh2DUVBuffer* uvbuf = MakeGarbageCollected<Mesh2DUVBuffer>(
+      base::MakeRefCounted<cc::RefCountedBuffer<SkPoint>>(
+          std::vector<SkPoint>{{0, 0}, {1, 0}, {1, 1}}));
+  const Mesh2DIndexBuffer* ibuf = MakeGarbageCollected<Mesh2DIndexBuffer>(
+      base::MakeRefCounted<cc::RefCountedBuffer<uint16_t>>(
+          std::vector<uint16_t>{0, 1, 2}));
+
+  Context2D()->beginLayer(GetScriptState(), BeginLayerOptions::Create(),
+                          no_exception);
+
+  // Throws inside layers:
+  DummyExceptionStateForTesting exception_state;
+  Context2D()->drawMesh(vbuf, uvbuf, ibuf, image, exception_state);
+  EXPECT_EQ(exception_state.CodeAs<DOMExceptionCode>(),
+            DOMExceptionCode::kInvalidStateError);
+
+  Context2D()->endLayer(no_exception);
+
+  // Doesn't throw outside layers:
+  Context2D()->drawMesh(vbuf, uvbuf, ibuf, image, no_exception);
+}
+
+
+============================================================
+TIM: canvas_toBlob  (Canvas fingerprint - toBlob)
+============================================================
+--- html_canvas_element.cc | dong 1375 ---
+PATH: third_party\blink\renderer\core\html\canvas\html_canvas_element.cc
+}
+
+void HTMLCanvasElement::toBlob(V8BlobCallback* callback,
+                               const String& mime_type,
+                               const ScriptValue& quality_argument,
+                               ExceptionState& exception_state) {
+  if (!OriginClean()) {
+    exception_state.ThrowSecurityError("Tainted canvases may not be exported.");
+    return;
+  }
+
+  if (!GetExecutionContext())
+    return;
+
+  if (ContextHasOpenLayers(context_)) {
+    exception_state.ThrowDOMException(
+        DOMExceptionCode::kInvalidStateError,
+        "`toBlob()` cannot be called with open layers.");
+    return;
+  }
+
+  if (!IsPaintable()) {
+    // If the canvas element's bitmap has no pixels
+    GetDocument()
+        .GetTaskRunner(TaskType::kCanvasBlobSerialization)
+        ->PostTask(FROM_HERE,
+                   BindOnce(&V8BlobCallback::InvokeAndReportException,
+                            WrapPersistent(callback), nullptr, nullptr));
+    return;
+  }
+
+  base::TimeTicks start_time = base::TimeTicks::Now();
+  double quality = kUndefinedQualityValue;
+  if (!quality_argument.IsEmpty()) {
+    v8::Local<v8::Value> v8_value = quality_argument.V8Value();
+    if (v8_value->IsNumber())
+      quality = v8_value.As<v8::Number>()->Value();
+
+
+--- html_canvas_element.cc | dong 1390 ---
+PATH: third_party\blink\renderer\core\html\canvas\html_canvas_element.cc
+    exception_state.ThrowDOMException(
+        DOMExceptionCode::kInvalidStateError,
+        "`toBlob()` cannot be called with open layers.");
+    return;
+  }
+
+  if (!IsPaintable()) {
+    // If the canvas element's bitmap has no pixels
+    GetDocument()
+        .GetTaskRunner(TaskType::kCanvasBlobSerialization)
+        ->PostTask(FROM_HERE,
+                   BindOnce(&V8BlobCallback::InvokeAndReportException,
+                            WrapPersistent(callback), nullptr, nullptr));
+    return;
+  }
+
+  base::TimeTicks start_time = base::TimeTicks::Now();
+  double quality = kUndefinedQualityValue;
+  if (!quality_argument.IsEmpty()) {
+    v8::Local<v8::Value> v8_value = quality_argument.V8Value();
+    if (v8_value->IsNumber())
+      quality = v8_value.As<v8::Number>()->Value();
+  }
+
+  ImageEncodingMimeType encoding_mime_type =
+      ImageEncoderUtils::ToEncodingMimeType(
+          mime_type, ImageEncoderUtils::kEncodeReasonToBlobCallback);
+
+  CanvasAsyncBlobCreator* async_creator = nullptr;
+  scoped_refptr<StaticBitmapImage> image_bitmap = Snapshot(kBackBuffer);
+  if (image_bitmap) {
+    auto* options = ImageEncodeOptions::Create();
+    options->setType(ImageEncoderUtils::MimeTypeName(encoding_mime_type));
+    async_creator = MakeGarbageCollected<CanvasAsyncBlobCreator>(
+        image_bitmap, options,
+        CanvasAsyncBlobCreator::kHTMLCanvasToBlobCallback, callback, start_time,
+        GetExecutionContext());
+
+
+--- canvas_rendering_context_2d_api_test.cc | dong 497 ---
+PATH: third_party\blink\renderer\modules\canvas\canvas2d\canvas_rendering_context_2d_api_test.cc
+  // Throws inside layers:
+  DummyExceptionStateForTesting exception_state;
+  CanvasElement().toBlob(callback, /*mime_type=*/"image/png", exception_state);
+  EXPECT_EQ(exception_state.CodeAs<DOMExceptionCode>(),
+            DOMExceptionCode::kInvalidStateError);
+
+  Context2D()->endLayer(no_exception);
+
+  // Doesn't throw outside layers:
+  CanvasElement().toBlob(callback, /*mime_type=*/"image/png", no_exception);
+}
+
+// Checks `toDataURL` throws an exception if called inside a layer.
+TEST_F(CanvasRenderingContext2DAPITest, UnclosedLayerToDataUrl) {
+  ScopedCanvas2dLayersForTest layer_feature(/*enabled=*/true);
+  CreateContext(kNonOpaque);
+  NonThrowableExceptionState no_exception;
+
+  Context2D()->beginLayer(GetScriptState(), BeginLayerOptions::Create(),
+                          no_exception);
+
+  // Throws inside layers:
+  DummyExceptionStateForTesting exception_state;
+  CanvasElement().toDataURL(/*mime_type=*/"image/png", exception_state);
+  EXPECT_EQ(exception_state.CodeAs<DOMExceptionCode>(),
+            DOMExceptionCode::kInvalidStateError);
+
+  Context2D()->endLayer(no_exception);
+
+  // Doesn't throw outside layers:
+  CanvasElement().toDataURL(/*mime_type=*/"image/png", no_exception);
+}
+
+// Checks `drawMesh` throws an exception if called inside a layer.
+TEST_F(CanvasRenderingContext2DAPITest, UnclosedLayerDrawMesh) {
+  ScopedCanvas2dLayersForTest layer_feature(/*enabled=*/true);
+  CreateContext(kNonOpaque);
+
+
+--- canvas_rendering_context_2d_api_test.cc | dong 504 ---
+PATH: third_party\blink\renderer\modules\canvas\canvas2d\canvas_rendering_context_2d_api_test.cc
+
+  // Doesn't throw outside layers:
+  CanvasElement().toBlob(callback, /*mime_type=*/"image/png", no_exception);
+}
+
+// Checks `toDataURL` throws an exception if called inside a layer.
+TEST_F(CanvasRenderingContext2DAPITest, UnclosedLayerToDataUrl) {
+  ScopedCanvas2dLayersForTest layer_feature(/*enabled=*/true);
+  CreateContext(kNonOpaque);
+  NonThrowableExceptionState no_exception;
+
+  Context2D()->beginLayer(GetScriptState(), BeginLayerOptions::Create(),
+                          no_exception);
+
+  // Throws inside layers:
+  DummyExceptionStateForTesting exception_state;
+  CanvasElement().toDataURL(/*mime_type=*/"image/png", exception_state);
+  EXPECT_EQ(exception_state.CodeAs<DOMExceptionCode>(),
+            DOMExceptionCode::kInvalidStateError);
+
+  Context2D()->endLayer(no_exception);
+
+  // Doesn't throw outside layers:
+  CanvasElement().toDataURL(/*mime_type=*/"image/png", no_exception);
+}
+
+// Checks `drawMesh` throws an exception if called inside a layer.
+TEST_F(CanvasRenderingContext2DAPITest, UnclosedLayerDrawMesh) {
+  ScopedCanvas2dLayersForTest layer_feature(/*enabled=*/true);
+  CreateContext(kNonOpaque);
+
+  NonThrowableExceptionState no_exception;
+  auto* image = MakeGarbageCollected<V8CanvasImageSource>(&CanvasElement());
+
+  const Mesh2DVertexBuffer* vbuf = MakeGarbageCollected<Mesh2DVertexBuffer>(
+      base::MakeRefCounted<cc::RefCountedBuffer<SkPoint>>(
+          std::vector<SkPoint>{{0, 0}, {100, 0}, {100, 100}}));
+
+
+============================================================
+TIM: getImageData  (Canvas fingerprint - getImageData)
+============================================================
+--- html_canvas_element_test.cc | dong 94 ---
+PATH: third_party\blink\renderer\core\html\canvas\html_canvas_element_test.cc
+    ctx.fillStyle = 'red';
+    ctx.fillRect(0, 0, 10, 10);
+    ctx.getImageData(0, 0, 1, 1);  // Force a frame to be rendered.
+
+    canvas.width = 10;
+
+    ctx.fillStyle = 'blue';
+    ctx.fillRect(0, 0, 5, 5);
+  )JS");
+  GetDocument().body()->appendChild(script);
+  RunDocumentLifecycle();
+
+  auto* canvas =
+      To<HTMLCanvasElement>(GetDocument().getElementById(AtomicString("c")));
+
+  cc::PaintFlags fill_flags = FillFlags();
+  fill_flags.setColor(SkColors::kBlue);
+  EXPECT_THAT(
+      canvas->RenderingContext()->GetLastRecordingForCanvas2D(),
+      Optional(RecordedOpsAre(
+          PaintOpEq<DrawRectOp>(SkRect::MakeXYWH(0, 0, 10, 20),
+                                ClearRectFlags()),
+          PaintOpEq<DrawRectOp>(SkRect::MakeXYWH(0, 0, 5, 5), fill_flags))));
+}
+
+TEST_P(HTMLCanvasElementTest, CreateLayerUpdatesCompositing) {
+  // Enable script so that the canvas will create a LayoutHTMLCanvas.
+  GetDocument().GetSettings()->SetScriptEnabled(true);
+
+  SetBodyInnerHTML("<canvas id='canvas'></canvas>");
+  auto* canvas = To<HTMLCanvasElement>(
+      GetDocument().getElementById(AtomicString("canvas")));
+  EXPECT_FALSE(canvas->GetLayoutObject()
+                   ->FirstFragment()
+                   .PaintProperties()
+                   ->PaintOffsetTranslation());
+
+
+
+--- print_context_test.cc | dong 1159 ---
+PATH: third_party\blink\renderer\core\page\print_context_test.cc
+      "'false'});"
+      "source_ctx.fillRect(0, 0, 1, 1);"
+      "image_data = source_ctx.getImageData(0, 0, 5, 5);"
+      "window.addEventListener('beforeprint', (ev) => {"
+      "  ctx = document.getElementById('c').getContext('2d');"
+      "  ctx.drawImage(source_canvas, 0, 0);"
+      // Touching source_ctx forces a flush of both contexts, which cancels
+      // vector printing.
+      "  source_ctx.putImageData(image_data, 0, 0);"
+      "  ctx.fillRect(0, 0, 1, 1);"
+      "});");
+  GetDocument().body()->AppendChild(script_element);
+
+  // Verify that the auto-flush caused the canvas printing to fall out of
+  // vector mode.
+  testing::Sequence s;
+  // The bitmap blit
+  EXPECT_CALL(canvas, onDrawImageRect2(_, _, _, _, _, _)).InSequence(s);
+  // The fill rect in the event listener should leave no trace here because
+  // it is supposed to be included in the canvas blit.
+  EXPECT_CALL(canvas, onDrawRect(_, _))
+      .Times(testing::Exactly(0))
+      .InSequence(s);
+
+  PrintSinglePage(canvas);
+}
+
+TEST_P(PrintContextOOPRCanvasTest, Canvas2DNoFlushForImageListener) {
+  // Verifies that a the canvas printing stays in vector mode after a
+  // canvas to canvas drawImage, as long as the source canvas is not
+  // touched afterwards.
+  MockPageContextCanvas canvas;
+  SetBodyInnerHTML("<canvas id='c' width=200 height=100></canvas>");
+  GetDocument().GetSettings()->SetScriptEnabled(true);
+  Element* const script_element =
+      GetDocument().CreateRawElement(html_names::kScriptTag);
+  script_element->setTextContent(
+
+
+--- html_canvas_painter_test.cc | dong 83 ---
+PATH: third_party\blink\renderer\core\paint\html_canvas_painter_test.cc
+    ctx.fillStyle = 'red';
+    ctx.fillRect(0, 0, 10, 10);
+    ctx.getImageData(0, 0, 1, 1);  // Force a frame to be rendered.
+
+    canvas.width = 10;
+
+    ctx.fillStyle = 'blue';
+    ctx.fillRect(0, 0, 5, 5);
+  )JS");
+  GetDocument().body()->appendChild(script);
+  RunDocumentLifecycle();
+
+  auto* element = To<HTMLCanvasElement>(GetDocument().body()->firstChild());
+  CanvasRenderingContext* context = element->RenderingContext();
+
+  ASSERT_TRUE(context->IsComposited());
+  ASSERT_TRUE(element->IsAccelerated());
+
+  // Fetch the layer associated with the <canvas>, and check that it was
+  // correctly configured in the layer tree.
+  const cc::Layer* layer = context->CcLayer();
+  ASSERT_TRUE(layer);
+  EXPECT_TRUE(HasLayerAttached(*layer));
+  EXPECT_EQ(gfx::Size(10, 20), layer->bounds());
 }
 
 }  // namespace blink
 
---- HET DOAN ---
+
+--- base_rendering_context_2d.cc | dong 344 ---
+PATH: third_party\blink\renderer\modules\canvas\canvas2d\base_rendering_context_2d.cc
+}
+
+ImageData* BaseRenderingContext2D::getImageData(
+    int sx,
+    int sy,
+    int sw,
+    int sh,
+    ExceptionState& exception_state) {
+  return getImageDataInternal(sx, sy, sw, sh, /*image_data_settings=*/nullptr,
+                              exception_state);
+}
+
+ImageData* BaseRenderingContext2D::getImageData(
+    int sx,
+    int sy,
+    int sw,
+    int sh,
+    ImageDataSettings* image_data_settings,
+    ExceptionState& exception_state) {
+  return getImageDataInternal(sx, sy, sw, sh, image_data_settings,
+                              exception_state);
+}
+perfetto::EventContext GetEventContext();
+
+ImageData* BaseRenderingContext2D::getImageDataInternal(
+    int sx,
+    int sy,
+    int sw,
+    int sh,
+    ImageDataSettings* image_data_settings,
+    ExceptionState& exception_state) {
+  if (!base::CheckMul(sw, sh).IsValid<int>()) {
+    exception_state.ThrowRangeError("Out of memory at ImageData creation");
+    return nullptr;
+  }
+
+  if (layer_count_ != 0) {
+
+
+--- base_rendering_context_2d.cc | dong 354 ---
+PATH: third_party\blink\renderer\modules\canvas\canvas2d\base_rendering_context_2d.cc
+}
+
+ImageData* BaseRenderingContext2D::getImageData(
+    int sx,
+    int sy,
+    int sw,
+    int sh,
+    ImageDataSettings* image_data_settings,
+    ExceptionState& exception_state) {
+  return getImageDataInternal(sx, sy, sw, sh, image_data_settings,
+                              exception_state);
+}
+perfetto::EventContext GetEventContext();
+
+ImageData* BaseRenderingContext2D::getImageDataInternal(
+    int sx,
+    int sy,
+    int sw,
+    int sh,
+    ImageDataSettings* image_data_settings,
+    ExceptionState& exception_state) {
+  if (!base::CheckMul(sw, sh).IsValid<int>()) {
+    exception_state.ThrowRangeError("Out of memory at ImageData creation");
+    return nullptr;
+  }
+
+  if (layer_count_ != 0) {
+    exception_state.ThrowDOMException(
+        DOMExceptionCode::kInvalidStateError,
+        "`getImageData()` cannot be called with open layers.");
+    return nullptr;
+  }
+
+  if (!OriginClean()) {
+    exception_state.ThrowSecurityError(
+        "The canvas has been tainted by cross-origin data.");
+  } else if (!sw || !sh) {
+
+
+--- base_rendering_context_2d.cc | dong 381 ---
+PATH: third_party\blink\renderer\modules\canvas\canvas2d\base_rendering_context_2d.cc
+    exception_state.ThrowDOMException(
+        DOMExceptionCode::kInvalidStateError,
+        "`getImageData()` cannot be called with open layers.");
+    return nullptr;
+  }
+
+  if (!OriginClean()) {
+    exception_state.ThrowSecurityError(
+        "The canvas has been tainted by cross-origin data.");
+  } else if (!sw || !sh) {
+    exception_state.ThrowDOMException(
+        DOMExceptionCode::kIndexSizeError,
+        UNSAFE_TODO(
+            String::Format("The source %s is 0.", sw ? "height" : "width")));
+  }
+
+  if (exception_state.HadException())
+    return nullptr;
+
+  if (sw < 0) {
+    if (!base::CheckAdd(sx, sw).IsValid<int>()) {
+      exception_state.ThrowRangeError("Out of memory at ImageData creation");
+      return nullptr;
+    }
+    sx += sw;
+    sw = base::saturated_cast<int>(base::SafeUnsignedAbs(sw));
+  }
+  if (sh < 0) {
+    if (!base::CheckAdd(sy, sh).IsValid<int>()) {
+      exception_state.ThrowRangeError("Out of memory at ImageData creation");
+      return nullptr;
+    }
+    sy += sh;
+    sh = base::saturated_cast<int>(base::SafeUnsignedAbs(sh));
+  }
+
+  if (!base::CheckAdd(sx, sw).IsValid<int>() ||
+
+
+--- canvas_rendering_context_2d_api_test.cc | dong 332 ---
+PATH: third_party\blink\renderer\modules\canvas\canvas2d\canvas_rendering_context_2d_api_test.cc
+  DummyExceptionStateForTesting exception_state;
+  ImageDataSettings* settings = ImageDataSettings::Create();
+  ImageData* image_data = Context2D()->getImageData(0, 0, 1000000, 1000000,
+                                                    settings, exception_state);
+  EXPECT_EQ(nullptr, image_data);
+  EXPECT_TRUE(exception_state.HadException());
+  EXPECT_EQ(ESErrorType::kRangeError, exception_state.CodeAs<ESErrorType>());
+}
+
+TEST_F(CanvasRenderingContext2DAPITest,
+       GetImageDataIntegerOverflowNegativeParams) {
+  CreateContext(kNonOpaque);
+  ImageDataSettings* settings = ImageDataSettings::Create();
+  {
+    DummyExceptionStateForTesting exception_state;
+    ImageData* image_data = Context2D()->getImageData(
+        1, -2147483647, 1, -2147483647, settings, exception_state);
+    EXPECT_EQ(nullptr, image_data);
+    EXPECT_TRUE(exception_state.HadException());
+    EXPECT_EQ(ESErrorType::kRangeError, exception_state.CodeAs<ESErrorType>());
+  }
+
+  {
+    DummyExceptionStateForTesting exception_state;
+    ImageData* image_data = Context2D()->getImageData(
+        -2147483647, 1, -2147483647, 1, settings, exception_state);
+    EXPECT_EQ(nullptr, image_data);
+    EXPECT_TRUE(exception_state.HadException());
+    EXPECT_EQ(ESErrorType::kRangeError, exception_state.CodeAs<ESErrorType>());
+  }
+}
+
+// Checks `CreateImageBitmap` throws an exception if called inside a layer.
+TEST_F(CanvasRenderingContext2DAPITest, UnclosedLayerCreateImageBitmap) {
+  V8TestingScope scope;
+  ScopedCanvas2dLayersForTest layer_feature(/*enabled=*/true);
+  CreateContext(kNonOpaque);
+
+
+--- canvas_rendering_context_2d_api_test.cc | dong 345 ---
+PATH: third_party\blink\renderer\modules\canvas\canvas2d\canvas_rendering_context_2d_api_test.cc
+  {
+    DummyExceptionStateForTesting exception_state;
+    ImageData* image_data = Context2D()->getImageData(
+        1, -2147483647, 1, -2147483647, settings, exception_state);
+    EXPECT_EQ(nullptr, image_data);
+    EXPECT_TRUE(exception_state.HadException());
+    EXPECT_EQ(ESErrorType::kRangeError, exception_state.CodeAs<ESErrorType>());
+  }
+
+  {
+    DummyExceptionStateForTesting exception_state;
+    ImageData* image_data = Context2D()->getImageData(
+        -2147483647, 1, -2147483647, 1, settings, exception_state);
+    EXPECT_EQ(nullptr, image_data);
+    EXPECT_TRUE(exception_state.HadException());
+    EXPECT_EQ(ESErrorType::kRangeError, exception_state.CodeAs<ESErrorType>());
+  }
+}
+
+// Checks `CreateImageBitmap` throws an exception if called inside a layer.
+TEST_F(CanvasRenderingContext2DAPITest, UnclosedLayerCreateImageBitmap) {
+  V8TestingScope scope;
+  ScopedCanvas2dLayersForTest layer_feature(/*enabled=*/true);
+  CreateContext(kNonOpaque);
+
+  NonThrowableExceptionState no_exception;
+  auto* image = MakeGarbageCollected<V8ImageBitmapSource>(&CanvasElement());
+  auto* options = ImageBitmapOptions::Create();
+
+  Context2D()->beginLayer(GetScriptState(), BeginLayerOptions::Create(),
+                          no_exception);
+
+  // Throws inside layers:
+  DummyExceptionStateForTesting exception_state;
+  ImageBitmapFactories::CreateImageBitmap(GetScriptState(), image, options,
+                                          exception_state);
+  EXPECT_EQ(exception_state.CodeAs<DOMExceptionCode>(),
+
+
+--- canvas_rendering_context_2d_api_test.cc | dong 354 ---
+PATH: third_party\blink\renderer\modules\canvas\canvas2d\canvas_rendering_context_2d_api_test.cc
+  {
+    DummyExceptionStateForTesting exception_state;
+    ImageData* image_data = Context2D()->getImageData(
+        -2147483647, 1, -2147483647, 1, settings, exception_state);
+    EXPECT_EQ(nullptr, image_data);
+    EXPECT_TRUE(exception_state.HadException());
+    EXPECT_EQ(ESErrorType::kRangeError, exception_state.CodeAs<ESErrorType>());
+  }
+}
+
+// Checks `CreateImageBitmap` throws an exception if called inside a layer.
+TEST_F(CanvasRenderingContext2DAPITest, UnclosedLayerCreateImageBitmap) {
+  V8TestingScope scope;
+  ScopedCanvas2dLayersForTest layer_feature(/*enabled=*/true);
+  CreateContext(kNonOpaque);
+
+  NonThrowableExceptionState no_exception;
+  auto* image = MakeGarbageCollected<V8ImageBitmapSource>(&CanvasElement());
+  auto* options = ImageBitmapOptions::Create();
+
+  Context2D()->beginLayer(GetScriptState(), BeginLayerOptions::Create(),
+                          no_exception);
+
+  // Throws inside layers:
+  DummyExceptionStateForTesting exception_state;
+  ImageBitmapFactories::CreateImageBitmap(GetScriptState(), image, options,
+                                          exception_state);
+  EXPECT_EQ(exception_state.CodeAs<DOMExceptionCode>(),
+            DOMExceptionCode::kInvalidStateError);
+
+  Context2D()->endLayer(no_exception);
+
+  // Doesn't throw outside layers:
+  ImageBitmapFactories::CreateImageBitmap(GetScriptState(), image, options,
+                                          no_exception);
+}
+
+
+
+--- canvas_rendering_context_2d_api_test.cc | dong 447 ---
+PATH: third_party\blink\renderer\modules\canvas\canvas2d\canvas_rendering_context_2d_api_test.cc
+  // Throws inside layers:
+  DummyExceptionStateForTesting exception_state;
+  Context2D()->getImageData(/*sx=*/0, /*sy=*/0, /*sw=*/1, /*sh=*/1,
+                            exception_state);
+  EXPECT_EQ(exception_state.CodeAs<DOMExceptionCode>(),
+            DOMExceptionCode::kInvalidStateError);
+
+  Context2D()->endLayer(no_exception);
+
+  // Doesn't throw outside layers:
+  Context2D()->getImageData(/*sx=*/0, /*sy=*/0, /*sw=*/1, /*sh=*/1,
+                            no_exception);
+}
+
+// Checks `putImageData` throws an exception if called inside a layer.
+TEST_F(CanvasRenderingContext2DAPITest, UnclosedLayerPutImageData) {
+  ScopedCanvas2dLayersForTest layer_feature(/*enabled=*/true);
+  CreateContext(kNonOpaque);
+
+  NonThrowableExceptionState no_exception;
+  ImageData* image_data = ImageData::Create(
+      Context2D()->Width(), Context2D()->Height(), no_exception);
+
+  Context2D()->beginLayer(GetScriptState(), BeginLayerOptions::Create(),
+                          no_exception);
+
+  // Throws inside layers:
+  DummyExceptionStateForTesting exception_state;
+  Context2D()->putImageData(image_data, /*dx=*/0, /*dy=*/0, exception_state);
+  EXPECT_EQ(exception_state.CodeAs<DOMExceptionCode>(),
+            DOMExceptionCode::kInvalidStateError);
+
+  Context2D()->endLayer(no_exception);
+
+  // Doesn't throw outside layers:
+  Context2D()->putImageData(image_data, /*dx=*/0, /*dy=*/0, no_exception);
+}
+
+
+--- canvas_rendering_context_2d_api_test.cc | dong 455 ---
+PATH: third_party\blink\renderer\modules\canvas\canvas2d\canvas_rendering_context_2d_api_test.cc
+
+  // Doesn't throw outside layers:
+  Context2D()->getImageData(/*sx=*/0, /*sy=*/0, /*sw=*/1, /*sh=*/1,
+                            no_exception);
+}
+
+// Checks `putImageData` throws an exception if called inside a layer.
+TEST_F(CanvasRenderingContext2DAPITest, UnclosedLayerPutImageData) {
+  ScopedCanvas2dLayersForTest layer_feature(/*enabled=*/true);
+  CreateContext(kNonOpaque);
+
+  NonThrowableExceptionState no_exception;
+  ImageData* image_data = ImageData::Create(
+      Context2D()->Width(), Context2D()->Height(), no_exception);
+
+  Context2D()->beginLayer(GetScriptState(), BeginLayerOptions::Create(),
+                          no_exception);
+
+  // Throws inside layers:
+  DummyExceptionStateForTesting exception_state;
+  Context2D()->putImageData(image_data, /*dx=*/0, /*dy=*/0, exception_state);
+  EXPECT_EQ(exception_state.CodeAs<DOMExceptionCode>(),
+            DOMExceptionCode::kInvalidStateError);
+
+  Context2D()->endLayer(no_exception);
+
+  // Doesn't throw outside layers:
+  Context2D()->putImageData(image_data, /*dx=*/0, /*dy=*/0, no_exception);
+}
+
+// Checks `toBlob` throws an exception if called inside a layer.
+TEST_F(CanvasRenderingContext2DAPITest, UnclosedLayerToBlob) {
+  V8TestingScope scope;
+  ScopedCanvas2dLayersForTest layer_feature(/*enabled=*/true);
+  CreateContext(kNonOpaque);
+
+  NonThrowableExceptionState no_exception;
+
+
+--- canvas_rendering_context_2d_test.cc | dong 1582 ---
+PATH: third_party\blink\renderer\modules\canvas\canvas2d\canvas_rendering_context_2d_test.cc
+  int read_count = BaseRenderingContext2D::kFallbackToCPUAfterReadbacks;
+  while (read_count--) {
+    Context2D()->getImageData(0, 0, 1, 1, settings, exception_state);
+  }
+  EXPECT_EQ(CanvasElement().GetRasterModeForCanvas2D(), RasterMode::kCPU);
+}
+
+TEST_P(CanvasRenderingContext2DTest, AutoFlush) {
+  CreateContext(kNonOpaque);
+  gfx::Size size(10, 10);
+  CanvasElement().SetPreferred2DRasterMode(RasterModeHint::kPreferGPU);
+  Context2D()->SetCanvas2DResourceProviderForTesting(
+      /*provider=*/nullptr, size);
+  Context2D()->fillRect(0, 0, 1, 1);  // Ensure resource provider is created.
+  const size_t initial_op_count = Context2D()->Recorder()->TotalOpCount();
+
+  while (Context2D()->Recorder()->TotalOpBytesUsed() <=
+         kMaxRecordedOpKB * 1024) {
+    Context2D()->fillRect(0, 0, 1, 1);
+    // Verify that auto-flush did not happen
+    ASSERT_GT(Context2D()->Recorder()->TotalOpCount(), initial_op_count);
+  }
+  Context2D()->fillRect(0, 0, 1, 1);
+  // Verify that auto-flush happened
+  ASSERT_EQ(Context2D()->Recorder()->TotalOpCount(), initial_op_count);
+}
+
+TEST_P(CanvasRenderingContext2DTest, AutoFlushPinnedImages) {
+  CreateContext(kNonOpaque);
+  gfx::Size size(10, 10);
+  CanvasElement().SetPreferred2DRasterMode(RasterModeHint::kPreferGPU);
+  Context2D()->SetCanvas2DResourceProviderForTesting(
+      /*provider=*/nullptr, size);
+
+  Context2D()->fillRect(0, 0, 1, 1);  // Ensure resource provider is created.
+
+  constexpr unsigned int kImageSize = 10;
+
+
+--- canvas_rendering_context_2d_test.cc | dong 2055 ---
+PATH: third_party\blink\renderer\modules\canvas\canvas2d\canvas_rendering_context_2d_test.cc
+  ImageDataSettings* settings = ImageDataSettings::Create();
+  EXPECT_EQ(CanvasElement().GetRasterModeForCanvas2D(), RasterMode::kGPU);
+  Context2D()->getImageData(0, 0, 1, 1, settings, exception_state);
+  EXPECT_EQ(CanvasElement().GetRasterModeForCanvas2D(), RasterMode::kGPU);
+}
+
+TEST_P(CanvasRenderingContext2DTestAccelerated,
+       GetImageDataDoesntEndHibernation) {
+  base::test::ScopedFeatureList scoped_feature_list;
+  scoped_feature_list.InitWithFeatures({features::kCanvas2DHibernation}, {});
+
+  CreateContext(kNonOpaque);
+  Context2D()->GetOrCreateResourceProvider();
+
+  auto& handler = CHECK_DEREF(Context2D()->GetHibernationHandler());
+  ASSERT_FALSE(handler.IsHibernating());
+
+  GetDocument().GetPage()->SetVisibilityState(
+      mojom::blink::PageVisibilityState::kHidden,
+      /*is_initial_state=*/false);
+
+  WaitForHibernation();
+  ASSERT_TRUE(handler.IsHibernating());
+
+  NonThrowableExceptionState exception_state;
+  Context2D()->getImageData(0, 0, 1, 1, exception_state);
+
+  EXPECT_TRUE(handler.IsHibernating());
+}
+
+// https://crbug.com/708445: When the canvas hibernates or wakes up from
+// hibernation, the compositing reasons for the canvas element may change. In
+// these cases, the element should request a compositing update.
+TEST_P(CanvasRenderingContext2DTestAccelerated,
+       ElementRequestsCompositingUpdateOnHibernateAndWakeUp) {
+  CreateContext(kNonOpaque);
+  gfx::Size size(300, 300);
+
+
+--- canvas_rendering_context_2d_test.cc | dong 2078 ---
+PATH: third_party\blink\renderer\modules\canvas\canvas2d\canvas_rendering_context_2d_test.cc
+
+  NonThrowableExceptionState exception_state;
+  Context2D()->getImageData(0, 0, 1, 1, exception_state);
+
+  EXPECT_TRUE(handler.IsHibernating());
+}
+
+// https://crbug.com/708445: When the canvas hibernates or wakes up from
+// hibernation, the compositing reasons for the canvas element may change. In
+// these cases, the element should request a compositing update.
+TEST_P(CanvasRenderingContext2DTestAccelerated,
+       ElementRequestsCompositingUpdateOnHibernateAndWakeUp) {
+  CreateContext(kNonOpaque);
+  gfx::Size size(300, 300);
+  CanvasElement().SetPreferred2DRasterMode(RasterModeHint::kPreferGPU);
+  CanvasElement().SetSize(size);
+
+  // Trigger resource provider creation.
+  Context2D()->fillRect(3, 3, 1, 1);
+  EXPECT_TRUE(!!Context2D()->GetResourceProviderForTesting());
+  EXPECT_EQ(CanvasElement().GetRasterModeForCanvas2D(), RasterMode::kGPU);
+
+  auto* box = CanvasElement().GetLayoutBoxModelObject();
+  EXPECT_TRUE(box);
+  PaintLayer* painting_layer = box->PaintingLayer();
+  EXPECT_TRUE(painting_layer);
+  UpdateAllLifecyclePhasesForTest();
+
+  // Hide element to trigger hibernation (if enabled).
+  SetDocumentVisibility(GetDocument(), PageVisibilityState::kHidden);
+
+  // The above fillRect() call caused the CanvasPerformanceMonitor to start
+  // observing tasks. Reset this task observation before running pending tasks
+  // to avoid a CHECK that goes off in its WillProcessTask() method due to its
+  // not being expected to be called at this point in the flow.
+  CanvasRenderingContext::GetCanvasPerformanceMonitor().ResetForTesting();
+
+
+
+--- offscreen_canvas_rendering_context_2d_test.cc | dong 214 ---
+PATH: third_party\blink\renderer\modules\canvas\offscreencanvas2d\offscreen_canvas_rendering_context_2d_test.cc
+
+  // Throws inside layers:
+  context->getImageData(/*sx=*/0, /*sy=*/0, /*sw=*/1, /*sh=*/1,
+                        scope.GetExceptionState());
+  EXPECT_EQ(scope.GetExceptionState().CodeAs<DOMExceptionCode>(),
+            DOMExceptionCode::kInvalidStateError);
+
+  context->endLayer(no_exception);
+
+  // Doesn't throw outside layers:
+  context->getImageData(/*sx=*/0, /*sy=*/0, /*sw=*/1, /*sh=*/1, no_exception);
+}
+
+// Checks `putImageData` throws an exception if called inside a layer.
+TEST(OffscreenCanvasRenderingContext2DTest, UnclosedLayerPutImageData) {
+  test::TaskEnvironment task_environment;
+  ScopedCanvas2dLayersForTest layer_feature(/*enabled=*/true);
+  V8TestingScope scope;
+  auto* host = OffscreenCanvas::Create(scope.GetScriptState(), /*width=*/10,
+                                       /*height=*/10);
+  OffscreenCanvasRenderingContext2D* context = GetContext(scope, host);
+
+  NonThrowableExceptionState no_exception;
+  ImageData* image_data =
+      ImageData::Create(context->Width(), context->Height(), no_exception);
+
+  context->beginLayer(scope.GetScriptState(), BeginLayerOptions::Create(),
+                      no_exception);
+
+  // Throws inside layers:
+  context->putImageData(image_data, /*dx=*/0, /*dy=*/0,
+                        scope.GetExceptionState());
+  EXPECT_EQ(scope.GetExceptionState().CodeAs<DOMExceptionCode>(),
+            DOMExceptionCode::kInvalidStateError);
+
+  context->endLayer(no_exception);
+
+
+
+--- offscreen_canvas_rendering_context_2d_test.cc | dong 222 ---
+PATH: third_party\blink\renderer\modules\canvas\offscreencanvas2d\offscreen_canvas_rendering_context_2d_test.cc
+
+  // Doesn't throw outside layers:
+  context->getImageData(/*sx=*/0, /*sy=*/0, /*sw=*/1, /*sh=*/1, no_exception);
+}
+
+// Checks `putImageData` throws an exception if called inside a layer.
+TEST(OffscreenCanvasRenderingContext2DTest, UnclosedLayerPutImageData) {
+  test::TaskEnvironment task_environment;
+  ScopedCanvas2dLayersForTest layer_feature(/*enabled=*/true);
+  V8TestingScope scope;
+  auto* host = OffscreenCanvas::Create(scope.GetScriptState(), /*width=*/10,
+                                       /*height=*/10);
+  OffscreenCanvasRenderingContext2D* context = GetContext(scope, host);
+
+  NonThrowableExceptionState no_exception;
+  ImageData* image_data =
+      ImageData::Create(context->Width(), context->Height(), no_exception);
+
+  context->beginLayer(scope.GetScriptState(), BeginLayerOptions::Create(),
+                      no_exception);
+
+  // Throws inside layers:
+  context->putImageData(image_data, /*dx=*/0, /*dy=*/0,
+                        scope.GetExceptionState());
+  EXPECT_EQ(scope.GetExceptionState().CodeAs<DOMExceptionCode>(),
+            DOMExceptionCode::kInvalidStateError);
+
+  context->endLayer(no_exception);
+
+  // Doesn't throw outside layers:
+  context->putImageData(image_data, /*dx=*/0, /*dy=*/0, no_exception);
+}
+
+// Checks `transferToImageBitmap` throws an exception if called inside a layer.
+TEST(OffscreenCanvasRenderingContext2DTest,
+     UnclosedLayerTransferToImageBitmap) {
+  test::TaskEnvironment task_environment;
+
 
 ============================================================
-TONG KET: Tim thay 1 cho co maxTouchPoints
+TIM: getFloatFrequencyData  (AudioContext fingerprint)
+============================================================
+--- analyser_node.cc | dong 119 ---
+PATH: third_party\blink\renderer\modules\webaudio\analyser_node.cc
+}
+
+void AnalyserNode::getFloatFrequencyData(NotShared<DOMFloat32Array> array) {
+  GetAnalyserHandler().GetFloatFrequencyData(array.Get(),
+                                             context()->currentTime());
+}
+
+void AnalyserNode::getByteFrequencyData(NotShared<DOMUint8Array> array) {
+  GetAnalyserHandler().GetByteFrequencyData(array.Get(),
+                                            context()->currentTime());
+}
+
+void AnalyserNode::getFloatTimeDomainData(NotShared<DOMFloat32Array> array) {
+  GetAnalyserHandler().GetFloatTimeDomainData(array.Get());
+}
+
+void AnalyserNode::getByteTimeDomainData(NotShared<DOMUint8Array> array) {
+  GetAnalyserHandler().GetByteTimeDomainData(array.Get());
+}
+
+void AnalyserNode::ReportDidCreate() {
+  GraphTracer().DidCreateAudioNode(this);
+}
+
+void AnalyserNode::ReportWillBeDestroyed() {
+  GraphTracer().WillDestroyAudioNode(this);
+}
+
+}  // namespace blink
+
+
+============================================================
+TIM: getByteFrequencyData  (AudioContext fingerprint)
+============================================================
+--- analyser_node.cc | dong 124 ---
+PATH: third_party\blink\renderer\modules\webaudio\analyser_node.cc
+}
+
+void AnalyserNode::getByteFrequencyData(NotShared<DOMUint8Array> array) {
+  GetAnalyserHandler().GetByteFrequencyData(array.Get(),
+                                            context()->currentTime());
+}
+
+void AnalyserNode::getFloatTimeDomainData(NotShared<DOMFloat32Array> array) {
+  GetAnalyserHandler().GetFloatTimeDomainData(array.Get());
+}
+
+void AnalyserNode::getByteTimeDomainData(NotShared<DOMUint8Array> array) {
+  GetAnalyserHandler().GetByteTimeDomainData(array.Get());
+}
+
+void AnalyserNode::ReportDidCreate() {
+  GraphTracer().DidCreateAudioNode(this);
+}
+
+void AnalyserNode::ReportWillBeDestroyed() {
+  GraphTracer().WillDestroyAudioNode(this);
+}
+
+}  // namespace blink
+
+
+============================================================
+TIM: getFloatTimeDomainData  (AudioContext fingerprint)
+============================================================
+--- analyser_node.cc | dong 129 ---
+PATH: third_party\blink\renderer\modules\webaudio\analyser_node.cc
+}
+
+void AnalyserNode::getFloatTimeDomainData(NotShared<DOMFloat32Array> array) {
+  GetAnalyserHandler().GetFloatTimeDomainData(array.Get());
+}
+
+void AnalyserNode::getByteTimeDomainData(NotShared<DOMUint8Array> array) {
+  GetAnalyserHandler().GetByteTimeDomainData(array.Get());
+}
+
+void AnalyserNode::ReportDidCreate() {
+  GraphTracer().DidCreateAudioNode(this);
+}
+
+void AnalyserNode::ReportWillBeDestroyed() {
+  GraphTracer().WillDestroyAudioNode(this);
+}
+
+}  // namespace blink
+
+
+============================================================
+TIM: screen_width  (Screen width)
+============================================================
+--- screen.cc | dong 87 ---
+PATH: third_party\blink\renderer\core\frame\screen.cc
+}
+
+int Screen::width() const {
+  if (!DomWindow())
+    return 0;
+  return GetRect(/*available=*/false).width();
+}
+
+unsigned Screen::colorDepth() const {
+  // "If the user agent does not know the color depth or does not want to
+  // return it for privacy considerations, it should return 24."
+  //
+  // https://drafts.csswg.org/cssom-view/#dom-screen-colordepth
+  unsigned unknown_color_depth = 24u;
+
+  if (!DomWindow()) {
+    return unknown_color_depth;
+  }
+  return GetScreenInfo().depth == 0
+             ? unknown_color_depth
+             : base::saturated_cast<unsigned>(GetScreenInfo().depth);
+}
+
+unsigned Screen::pixelDepth() const {
+  return colorDepth();
+}
+
+int Screen::availLeft() const {
+  if (!DomWindow())
+    return 0;
+  return GetRect(/*available=*/true).x();
+}
+
+int Screen::availTop() const {
+  if (!DomWindow())
+    return 0;
+  return GetRect(/*available=*/true).y();
+
+
+============================================================
+TIM: screen_height  (Screen height)
+============================================================
+--- screen.cc | dong 81 ---
+PATH: third_party\blink\renderer\core\frame\screen.cc
+}
+
+int Screen::height() const {
+  if (!DomWindow())
+    return 0;
+  return GetRect(/*available=*/false).height();
+}
+
+int Screen::width() const {
+  if (!DomWindow())
+    return 0;
+  return GetRect(/*available=*/false).width();
+}
+
+unsigned Screen::colorDepth() const {
+  // "If the user agent does not know the color depth or does not want to
+  // return it for privacy considerations, it should return 24."
+  //
+  // https://drafts.csswg.org/cssom-view/#dom-screen-colordepth
+  unsigned unknown_color_depth = 24u;
+
+  if (!DomWindow()) {
+    return unknown_color_depth;
+  }
+  return GetScreenInfo().depth == 0
+             ? unknown_color_depth
+             : base::saturated_cast<unsigned>(GetScreenInfo().depth);
+}
+
+unsigned Screen::pixelDepth() const {
+  return colorDepth();
+}
+
+int Screen::availLeft() const {
+  if (!DomWindow())
+    return 0;
+  return GetRect(/*available=*/true).x();
+
+
+============================================================
+TIM: screen_availWidth  (Screen availWidth)
+============================================================
+--- screen.cc | dong 130 ---
+PATH: third_party\blink\renderer\core\frame\screen.cc
+}
+
+int Screen::availWidth() const {
+  if (!DomWindow())
+    return 0;
+  return GetRect(/*available=*/true).width();
+}
+
+void Screen::Trace(Visitor* visitor) const {
+  EventTarget::Trace(visitor);
+  ExecutionContextClient::Trace(visitor);
+  Supplementable<Screen>::Trace(visitor);
+}
+
+const AtomicString& Screen::InterfaceName() const {
+  return event_target_names::kScreen;
+}
+
+ExecutionContext* Screen::GetExecutionContext() const {
+  return ExecutionContextClient::GetExecutionContext();
+}
+
+bool Screen::isExtended() const {
+  if (!DomWindow()) {
+    return false;
+  }
+  auto* context = GetExecutionContext();
+  if (!context->IsFeatureEnabled(
+          network::mojom::PermissionsPolicyFeature::kWindowManagement)) {
+    return false;
+  }
+
+  return GetScreenInfo().is_extended;
+}
+
+gfx::Rect Screen::GetRect(bool available) const {
+  if (!DomWindow())
+
+
+--- html_fenced_frame_element.cc | dong 629 ---
+PATH: third_party\blink\renderer\core\html\fenced_frame\html_fenced_frame_element.cc
+  Document& document = GetDocument();
+  int width_for_scaling = document.domWindow() && document.domWindow()->screen()
+                              ? document.domWindow()->screen()->availWidth()
+                              : 0;
+
+  // If scaling based on screen width is allowed, check for exact matches
+  // with the list of heights and aspect ratios.
+  if (width_for_scaling > 0) {
+    static_assert(kAllowedAdHeights.size() > 0UL);
+    for (const int allowed_height : kAllowedAdHeights) {
+      if (SizeMatchesExactly(requested_size,
+                             {width_for_scaling, allowed_height})) {
+        return requested_size;
+      }
+    }
+
+    static_assert(kAllowedAdAspectRatios.size() > 0UL);
+    for (const gfx::Size& allowed_aspect_ratio : kAllowedAdAspectRatios) {
+      if (SizeMatchesExactly(
+              requested_size,
+              {width_for_scaling,
+               (width_for_scaling * allowed_aspect_ratio.height()) /
+                   allowed_aspect_ratio.width()})) {
+        return requested_size;
+      }
+    }
+  }
+#endif
+
+  // If the requested size isn't allowed, we will freeze the inner frame
+  // element with the nearest available size (the best fit according to our
+  // size loss function).
+  GetDocument().AddConsoleMessage(MakeGarbageCollected<ConsoleMessage>(
+      mojom::blink::ConsoleMessageSource::kRendering,
+      mojom::blink::ConsoleMessageLevel::kWarning,
+      "A fenced frame in opaque-ads mode attempted to load with an "
+      "unsupported size, and was therefore rounded to the nearest supported "
+
+
+--- html_fenced_frame_element_test.cc | dong 119 ---
+PATH: third_party\blink\renderer\core\html\fenced_frame\html_fenced_frame_element_test.cc
+  };
+
+  int screen_width = GetDocument().domWindow()->screen()->availWidth();
+
+  std::vector<PhysicalSize> test_cases = {
+      {-1, -1},
+      {0, 0},
+      {0, 100},
+      {100, 0},
+      {100, 100},
+      {321, 51},
+      {INT_MIN, INT_MIN},
+      {INT_MIN / 2, INT_MIN / 2},
+      {INT_MAX, INT_MAX},
+      {INT_MAX / 2, INT_MAX / 2},
+      {screen_width, 0},
+      {screen_width, 50},
+      {screen_width, 500},
+      {screen_width + 10, 0},
+      {screen_width + 10, 50},
+      {screen_width + 10, 500},
+      PhysicalSize(LayoutUnit(320.4), LayoutUnit(50.4)),
+      PhysicalSize(LayoutUnit(320.6), LayoutUnit(50.6)),
+      PhysicalSize(LayoutUnit(std::numeric_limits<double>::infinity()),
+                   LayoutUnit(std::numeric_limits<double>::infinity())),
+      PhysicalSize(LayoutUnit(std::numeric_limits<double>::quiet_NaN()),
+                   LayoutUnit(std::numeric_limits<double>::quiet_NaN())),
+      PhysicalSize(LayoutUnit(std::numeric_limits<double>::signaling_NaN()),
+                   LayoutUnit(std::numeric_limits<double>::signaling_NaN())),
+      PhysicalSize(LayoutUnit(std::numeric_limits<double>::denorm_min()),
+                   LayoutUnit(std::numeric_limits<double>::denorm_min())),
+  };
+
+  int expected_coercion_count = 0;
+
+  for (const PhysicalSize& requested_size : test_cases) {
+    const PhysicalSize coerced_size =
+
+
+============================================================
+TIM: screen_availHeight  (Screen availHeight)
+============================================================
+--- screen.cc | dong 124 ---
+PATH: third_party\blink\renderer\core\frame\screen.cc
+}
+
+int Screen::availHeight() const {
+  if (!DomWindow())
+    return 0;
+  return GetRect(/*available=*/true).height();
+}
+
+int Screen::availWidth() const {
+  if (!DomWindow())
+    return 0;
+  return GetRect(/*available=*/true).width();
+}
+
+void Screen::Trace(Visitor* visitor) const {
+  EventTarget::Trace(visitor);
+  ExecutionContextClient::Trace(visitor);
+  Supplementable<Screen>::Trace(visitor);
+}
+
+const AtomicString& Screen::InterfaceName() const {
+  return event_target_names::kScreen;
+}
+
+ExecutionContext* Screen::GetExecutionContext() const {
+  return ExecutionContextClient::GetExecutionContext();
+}
+
+bool Screen::isExtended() const {
+  if (!DomWindow()) {
+    return false;
+  }
+  auto* context = GetExecutionContext();
+  if (!context->IsFeatureEnabled(
+          network::mojom::PermissionsPolicyFeature::kWindowManagement)) {
+    return false;
+  }
+
+
+============================================================
+TIM: screen_colorDepth  (Screen colorDepth)
+============================================================
+--- screen.cc | dong 93 ---
+PATH: third_party\blink\renderer\core\frame\screen.cc
+}
+
+unsigned Screen::colorDepth() const {
+  // "If the user agent does not know the color depth or does not want to
+  // return it for privacy considerations, it should return 24."
+  //
+  // https://drafts.csswg.org/cssom-view/#dom-screen-colordepth
+  unsigned unknown_color_depth = 24u;
+
+  if (!DomWindow()) {
+    return unknown_color_depth;
+  }
+  return GetScreenInfo().depth == 0
+             ? unknown_color_depth
+             : base::saturated_cast<unsigned>(GetScreenInfo().depth);
+}
+
+unsigned Screen::pixelDepth() const {
+  return colorDepth();
+}
+
+int Screen::availLeft() const {
+  if (!DomWindow())
+    return 0;
+  return GetRect(/*available=*/true).x();
+}
+
+int Screen::availTop() const {
+  if (!DomWindow())
+    return 0;
+  return GetRect(/*available=*/true).y();
+}
+
+int Screen::availHeight() const {
+  if (!DomWindow())
+    return 0;
+  return GetRect(/*available=*/true).height();
+
+
+--- screen.cc | dong 109 ---
+PATH: third_party\blink\renderer\core\frame\screen.cc
+
+unsigned Screen::pixelDepth() const {
+  return colorDepth();
+}
+
+int Screen::availLeft() const {
+  if (!DomWindow())
+    return 0;
+  return GetRect(/*available=*/true).x();
+}
+
+int Screen::availTop() const {
+  if (!DomWindow())
+    return 0;
+  return GetRect(/*available=*/true).y();
+}
+
+int Screen::availHeight() const {
+  if (!DomWindow())
+    return 0;
+  return GetRect(/*available=*/true).height();
+}
+
+int Screen::availWidth() const {
+  if (!DomWindow())
+    return 0;
+  return GetRect(/*available=*/true).width();
+}
+
+void Screen::Trace(Visitor* visitor) const {
+  EventTarget::Trace(visitor);
+  ExecutionContextClient::Trace(visitor);
+  Supplementable<Screen>::Trace(visitor);
+}
+
+const AtomicString& Screen::InterfaceName() const {
+  return event_target_names::kScreen;
+
+
+============================================================
+TIM: platform  (navigator.platform)
+============================================================
+--- navigator_base.cc | dong 61 ---
+PATH: third_party\blink\renderer\core\execution_context\navigator_base.cc
+  if (!RuntimeEnabledFeatures::ReduceUserAgentAndroidVersionDeviceModelEnabled(
+          execution_context)) {
+    return NavigatorID::platform();
+  }
+#endif
+  // TODO(crbug.com/469458271): When we remove phase 6 feature flags, we can
+  // move GetReducedNavigatorPlatform logic directly to NavigatorID::platform().
+  return GetReducedNavigatorPlatform();
+}
+
+void NavigatorBase::Trace(Visitor* visitor) const {
+  ScriptWrappable::Trace(visitor);
+  NavigatorLanguage::Trace(visitor);
+  ExecutionContextClient::Trace(visitor);
+  Supplementable<NavigatorBase>::Trace(visitor);
+}
+
+unsigned int NavigatorBase::hardwareConcurrency() const {
+  unsigned int hardware_concurrency =
+      NavigatorConcurrentHardware::hardwareConcurrency();
+
+  probe::ApplyHardwareConcurrencyOverride(
+      probe::ToCoreProbeSink(GetExecutionContext()), hardware_concurrency);
+  return hardware_concurrency;
+}
+
+ExecutionContext* NavigatorBase::GetUAExecutionContext() const {
+  return GetExecutionContext();
+}
+
+UserAgentMetadata NavigatorBase::GetUserAgentMetadata() const {
+  ExecutionContext* execution_context = GetExecutionContext();
+  return execution_context ? execution_context->GetUserAgentMetadata()
+                           : blink::UserAgentMetadata();
+}
+
+}  // namespace blink
+
+
+--- navigator_id.cc | dong 61 ---
+PATH: third_party\blink\renderer\core\frame\navigator_id.cc
+}
+
+String NavigatorID::platform() const {
+#if BUILDFLAG(IS_MAC)
+  // Match Safari and Mozilla on Mac x86.
+  return "MacIntel";
+#elif BUILDFLAG(IS_WIN)
+  // Match Safari and Mozilla on Windows.
+  return "Win32";
+#else  // Unix-like systems
+  struct utsname osname;
+  DEFINE_THREAD_SAFE_STATIC_LOCAL(ThreadSpecific<String>, platform_name, ());
+  if (platform_name->IsNull()) {
+    StringBuilder result;
+    if (uname(&osname) >= 0) {
+      result.Append(osname.sysname);
+      if (strlen(osname.machine) != 0) {
+        result.Append(" ");
+        result.Append(osname.machine);
+      }
+    }
+    *platform_name = result.ToString();
+  }
+  return *platform_name;
+#endif
+}
+
+String NavigatorID::product() {
+  return "Gecko";
+}
+
+}  // namespace blink
+
+
+============================================================
+TIM: vendor  (navigator.vendor)
+============================================================
+KHONG TIM THAY
+
+============================================================
+TIM: userAgent  (navigator.userAgent)
+============================================================
+KHONG TIM THAY
+
+============================================================
+TIM: timezone_offset  (Date.getTimezoneOffset)
+============================================================
+KHONG TIM THAY
+
+============================================================
+TIM: effectiveType  (navigator.connection.effectiveType)
+============================================================
+--- network_information.cc | dong 113 ---
+PATH: third_party\blink\renderer\modules\netinfo\network_information.cc
+}
+
+V8EffectiveConnectionType NetworkInformation::effectiveType() {
+  MaybeShowWebHoldbackConsoleMsg();
+  std::optional<WebEffectiveConnectionType> override_ect =
+      GetNetworkStateNotifier().GetWebHoldbackEffectiveType();
+  if (override_ect) {
+    return V8EffectiveConnectionType(
+        EffectiveConnectionTypeToEnum(override_ect.value()));
+  }
+
+  // effective_type_ is only updated when listening for events, so ask
+  // networkStateNotifier if not listening (crbug.com/379841).
+  if (!IsObserving()) {
+    return V8EffectiveConnectionType(EffectiveConnectionTypeToEnum(
+        GetNetworkStateNotifier().EffectiveType()));
+  }
+
+  // If observing, return m_type which changes when the event fires, per spec.
+  return V8EffectiveConnectionType(
+      EffectiveConnectionTypeToEnum(effective_type_));
+}
+
+uint32_t NetworkInformation::rtt() {
+  MaybeShowWebHoldbackConsoleMsg();
+  std::optional<base::TimeDelta> override_rtt =
+      GetNetworkStateNotifier().GetWebHoldbackHttpRtt();
+  if (override_rtt) {
+    return GetNetworkStateNotifier().RoundRtt(Host(), override_rtt.value());
+  }
+
+  if (!IsObserving()) {
+    return GetNetworkStateNotifier().RoundRtt(
+        Host(), GetNetworkStateNotifier().HttpRtt());
+  }
+
+  return http_rtt_msec_;
+
+
+============================================================
+TIM: connection_type  (navigator.connection.type)
+============================================================
+--- network_information.cc | dong 86 ---
+PATH: third_party\blink\renderer\modules\netinfo\network_information.cc
+}
+
+V8ConnectionType NetworkInformation::type() const {
+  if (RuntimeEnabledFeatures::NetInfoConstantTypeEnabled()) {
+    return V8ConnectionType(V8ConnectionType::Enum::kUnknown);
+  }
+
+  // type_ is only updated when listening for events, so ask
+  // networkStateNotifier if not listening (crbug.com/379841).
+  if (!IsObserving()) {
+    return V8ConnectionType(
+        ConnectionTypeToEnum(GetNetworkStateNotifier().ConnectionType()));
+  }
+
+  // If observing, return m_type which changes when the event fires, per spec.
+  return V8ConnectionType(ConnectionTypeToEnum(type_));
+}
+
+double NetworkInformation::downlinkMax() const {
+  if (RuntimeEnabledFeatures::NetInfoConstantTypeEnabled()) {
+    return std::numeric_limits<double>::infinity();
+  }
+
+  if (!IsObserving())
+    return GetNetworkStateNotifier().MaxBandwidth();
+
+  return downlink_max_mbps_;
+}
+
+V8EffectiveConnectionType NetworkInformation::effectiveType() {
+  MaybeShowWebHoldbackConsoleMsg();
+  std::optional<WebEffectiveConnectionType> override_ect =
+      GetNetworkStateNotifier().GetWebHoldbackEffectiveType();
+  if (override_ect) {
+    return V8EffectiveConnectionType(
+        EffectiveConnectionTypeToEnum(override_ect.value()));
+  }
+
+
+============================================================
+TIM: createOffer  (WebRTC - co the leak IP)
+============================================================
+--- rtc_peer_connection.cc | dong 737 ---
+PATH: third_party\blink\renderer\modules\peerconnection\rtc_peer_connection.cc
+}
+
+ScriptPromise<RTCSessionDescriptionInit> RTCPeerConnection::createOffer(
+    ScriptState* script_state,
+    const RTCOfferOptions* options,
+    ExceptionState& exception_state) {
+  if (signaling_state_ ==
+      webrtc::PeerConnectionInterface::SignalingState::kClosed) {
+    exception_state.ThrowDOMException(DOMExceptionCode::kInvalidStateError,
+                                      kSignalingStateClosedMessage);
+    return EmptyPromise();
+  }
+  auto* resolver =
+      MakeGarbageCollected<ScriptPromiseResolver<RTCSessionDescriptionInit>>(
+          script_state, exception_state.GetContext());
+  auto promise = resolver->Promise();
+  RTCSessionDescriptionRequest* request =
+      RTCSessionDescriptionRequestPromiseImpl::Create(this, resolver);
+
+  ExecutionContext* context = ExecutionContext::From(script_state);
+  UseCounter::Count(context, WebFeature::kRTCPeerConnectionCreateOffer);
+  UseCounter::Count(context, WebFeature::kRTCPeerConnectionCreateOfferPromise);
+  if (options->hasOfferToReceiveAudio() || options->hasOfferToReceiveVideo()) {
+    UseCounter::Count(
+        context,
+        WebFeature::kRTCPeerConnectionCreateOfferOptionsOfferToReceive);
+  }
+
+  auto platform_transceivers = peer_handler_->CreateOffer(
+      request, ConvertToRTCOfferOptionsPlatform(options));
+  for (auto& platform_transceiver : platform_transceivers)
+    CreateOrUpdateTransceiver(std::move(platform_transceiver));
+  return promise;
+}
+
+ScriptPromise<IDLUndefined> RTCPeerConnection::createOffer(
+    ScriptState* script_state,
+
+
+--- rtc_peer_connection.cc | dong 770 ---
+PATH: third_party\blink\renderer\modules\peerconnection\rtc_peer_connection.cc
+}
+
+ScriptPromise<IDLUndefined> RTCPeerConnection::createOffer(
+    ScriptState* script_state,
+    V8RTCSessionDescriptionCallback* success_callback,
+    V8RTCPeerConnectionErrorCallback* error_callback,
+    const RTCOfferOptions* options) {
+  DCHECK(success_callback);
+  DCHECK(error_callback);
+  ExecutionContext* context = ExecutionContext::From(script_state);
+  UseCounter::Count(context, WebFeature::kRTCPeerConnectionCreateOffer);
+  UseCounter::Count(
+      context, WebFeature::kRTCPeerConnectionCreateOfferLegacyFailureCallback);
+  UseCounter::Count(context,
+                    WebFeature::kRTCPeerConnectionCreateOfferLegacyCompliant);
+  if (CallErrorCallbackIfSignalingStateClosed(context, signaling_state_,
+                                              error_callback))
+    return ToResolvedUndefinedPromise(script_state);
+
+  RTCSessionDescriptionRequest* request =
+      RTCSessionDescriptionRequestImpl::Create(
+          GetExecutionContext(), this, success_callback, error_callback);
+
+  Vector<std::unique_ptr<RTCRtpTransceiverPlatform>> platform_transceivers =
+      peer_handler_->CreateOffer(request,
+                                 ConvertToRTCOfferOptionsPlatform(options));
+  for (auto& platform_transceiver : platform_transceivers)
+    CreateOrUpdateTransceiver(std::move(platform_transceiver));
+
+  return ToResolvedUndefinedPromise(script_state);
+}
+
+ScriptPromise<RTCSessionDescriptionInit> RTCPeerConnection::createAnswer(
+    ScriptState* script_state,
+    const RTCAnswerOptions* options,
+    ExceptionState& exception_state) {
+  if (signaling_state_ ==
+
+
+============================================================
+TIM: permissions_query  (navigator.permissions)
+============================================================
+--- permission_status.cc | dong 88 ---
+PATH: third_party\blink\renderer\modules\permissions\permission_status.cc
+}
+
+V8PermissionState PermissionStatus::state() const {
+  if (!listener_) {
+    return V8PermissionState(V8PermissionState::Enum::kDenied);
+  }
+  return listener_->state();
+}
+
+String PermissionStatus::name() const {
+  if (!listener_)
+    return String();
+  return listener_->name();
+}
+
+void PermissionStatus::StartListening() {
+  if (!listener_)
+    return;
+  listener_->AddObserver(this);
+}
+
+void PermissionStatus::StopListening() {
+  if (!listener_)
+    return;
+  listener_->RemoveObserver(this);
+}
+
+void PermissionStatus::OnPermissionStatusChange(MojoPermissionStatus status) {
+  // https://www.w3.org/TR/permissions/#onchange-attribute
+  // 1. If this's relevant global object is a Window object, then:
+  // - Let document be status's relevant global object's associated Document.
+  // - If document is null or document is not fully active, terminate this
+  // algorithm.
+  if (auto* window = DynamicTo<LocalDOMWindow>(GetExecutionContext())) {
+    auto* document = window->document();
+    if (!document || !document->IsActive()) {
+      // Note: if the event is dropped out while in BFCache, one single change
+
+
+============================================================
+TONG KET: 42 ket qua
