@@ -4,6 +4,7 @@ on: [workflow_dispatch]
 jobs:
   build:
     runs-on: windows-2022
+    timeout-minutes: 360 # Tổng thời gian 6 tiếng
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v4
@@ -20,7 +21,7 @@ jobs:
           $dir = Get-ChildItem -Directory -Filter "rclone-*" | Select-Object -First 1
           Move-Item "$($dir.FullName)\rclone.exe" . -Force
 
-      # CHIẾN THUẬT MỚI: TÁCH FILE JSON VÀ FILE CONFIG
+      # CHIẾN THUẬT: Tách file JSON để Rclone không bị lỗi Parse INI
       - name: Generate Rclone Config
         env:
           GDRIVE_JSON: ${{ secrets.GDRIVE_JSON }}
@@ -30,17 +31,17 @@ jobs:
 
       - name: Restore Cache from Drive
         run: |
-          mkdir -p ~/.cache/sccache
+          powershell -Command "New-Item -ItemType Directory -Path '$env:USERPROFILE\.cache\sccache' -Force"
           ./rclone --config rclone.conf sync gdrive:sccache ~/.cache/sccache --verbose
         continue-on-error: true
 
       - name: Setup Sccache
         uses: mozilla-actions/sccache-action@v0.0.3
 
-      - name: Clone Source
+      - name: Clone Source (Chromium 145)
         run: python ungoogled-chromium/utils/clone.py -o build/src
 
-      - name: Apply Spoof Patcher
+      - name: Apply Spoof Patcher (Audit Mode)
         run: python spoof_patcher.py
 
       - name: Official Build (Tự ngắt sau 4 tiếng)
@@ -52,7 +53,7 @@ jobs:
           echo 'cc_wrapper="sccache"' >> flags.windows.gn
           $proc = Start-Process python -ArgumentList "build.py" -PassThru -NoNewWindow
           if (!($proc.WaitForExit(14400000))) { 
-            Write-Host "--- Đã đủ 4 tiếng. Đang dừng để lưu cache! ---"
+            Write-Host "--- Đã đủ 4 tiếng. Đang dừng để lưu cache kịp thời! ---"
             Stop-Process -Id $proc.Id -Force 
           }
           python package.py
