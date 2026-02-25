@@ -1,8 +1,9 @@
-QUET TOAN BO BLINK - AUDIT FINGERPRINT
+AUDIT FINGERPRINT DAY DU - CHROMIUM 145
+Tong so target: 45
 ============================================================
 
 ============================================================
-TIM: canvas_toDataURL  (Canvas fingerprint - toDataURL)
+[P1] toDataURL  (Canvas hash - toDataURL)
 ============================================================
 --- html_canvas_element.cc | dong 1351 ---
 PATH: third_party\blink\renderer\core\html\canvas\html_canvas_element.cc
@@ -44,132 +45,19 @@ void HTMLCanvasElement::toBlob(V8BlobCallback* callback,
   if (!GetExecutionContext())
     return;
 
-
---- html_canvas_element.cc | dong 1357 ---
-PATH: third_party\blink\renderer\core\html\canvas\html_canvas_element.cc
-    exception_state.ThrowDOMException(
-        DOMExceptionCode::kInvalidStateError,
-        "`toDataURL()` cannot be called with open layers.");
-    return String();
-  }
-
-  if (!OriginClean()) {
-    exception_state.ThrowSecurityError("Tainted canvases may not be exported.");
-    return String();
-  }
-
-  double quality = kUndefinedQualityValue;
-  if (!quality_argument.IsEmpty()) {
-    v8::Local<v8::Value> v8_value = quality_argument.V8Value();
-    if (v8_value->IsNumber())
-      quality = v8_value.As<v8::Number>()->Value();
-  }
-  return ToDataURLInternal(mime_type, quality, kBackBuffer);
-}
-
-void HTMLCanvasElement::toBlob(V8BlobCallback* callback,
-                               const String& mime_type,
-                               const ScriptValue& quality_argument,
-                               ExceptionState& exception_state) {
-  if (!OriginClean()) {
-    exception_state.ThrowSecurityError("Tainted canvases may not be exported.");
-    return;
-  }
-
-  if (!GetExecutionContext())
-    return;
-
   if (ContextHasOpenLayers(context_)) {
     exception_state.ThrowDOMException(
         DOMExceptionCode::kInvalidStateError,
         "`toBlob()` cannot be called with open layers.");
     return;
+  }
 
-
---- canvas_rendering_context_2d_api_test.cc | dong 518 ---
-PATH: third_party\blink\renderer\modules\canvas\canvas2d\canvas_rendering_context_2d_api_test.cc
-  // Throws inside layers:
-  DummyExceptionStateForTesting exception_state;
-  CanvasElement().toDataURL(/*mime_type=*/"image/png", exception_state);
-  EXPECT_EQ(exception_state.CodeAs<DOMExceptionCode>(),
-            DOMExceptionCode::kInvalidStateError);
-
-  Context2D()->endLayer(no_exception);
-
-  // Doesn't throw outside layers:
-  CanvasElement().toDataURL(/*mime_type=*/"image/png", no_exception);
-}
-
-// Checks `drawMesh` throws an exception if called inside a layer.
-TEST_F(CanvasRenderingContext2DAPITest, UnclosedLayerDrawMesh) {
-  ScopedCanvas2dLayersForTest layer_feature(/*enabled=*/true);
-  CreateContext(kNonOpaque);
-
-  NonThrowableExceptionState no_exception;
-  auto* image = MakeGarbageCollected<V8CanvasImageSource>(&CanvasElement());
-
-  const Mesh2DVertexBuffer* vbuf = MakeGarbageCollected<Mesh2DVertexBuffer>(
-      base::MakeRefCounted<cc::RefCountedBuffer<SkPoint>>(
-          std::vector<SkPoint>{{0, 0}, {100, 0}, {100, 100}}));
-  const Mesh2DUVBuffer* uvbuf = MakeGarbageCollected<Mesh2DUVBuffer>(
-      base::MakeRefCounted<cc::RefCountedBuffer<SkPoint>>(
-          std::vector<SkPoint>{{0, 0}, {1, 0}, {1, 1}}));
-  const Mesh2DIndexBuffer* ibuf = MakeGarbageCollected<Mesh2DIndexBuffer>(
-      base::MakeRefCounted<cc::RefCountedBuffer<uint16_t>>(
-          std::vector<uint16_t>{0, 1, 2}));
-
-  Context2D()->beginLayer(GetScriptState(), BeginLayerOptions::Create(),
-                          no_exception);
-
-  // Throws inside layers:
-  DummyExceptionStateForTesting exception_state;
-  Context2D()->drawMesh(vbuf, uvbuf, ibuf, image, exception_state);
-  EXPECT_EQ(exception_state.CodeAs<DOMExceptionCode>(),
-
-
---- canvas_rendering_context_2d_api_test.cc | dong 525 ---
-PATH: third_party\blink\renderer\modules\canvas\canvas2d\canvas_rendering_context_2d_api_test.cc
-
-  // Doesn't throw outside layers:
-  CanvasElement().toDataURL(/*mime_type=*/"image/png", no_exception);
-}
-
-// Checks `drawMesh` throws an exception if called inside a layer.
-TEST_F(CanvasRenderingContext2DAPITest, UnclosedLayerDrawMesh) {
-  ScopedCanvas2dLayersForTest layer_feature(/*enabled=*/true);
-  CreateContext(kNonOpaque);
-
-  NonThrowableExceptionState no_exception;
-  auto* image = MakeGarbageCollected<V8CanvasImageSource>(&CanvasElement());
-
-  const Mesh2DVertexBuffer* vbuf = MakeGarbageCollected<Mesh2DVertexBuffer>(
-      base::MakeRefCounted<cc::RefCountedBuffer<SkPoint>>(
-          std::vector<SkPoint>{{0, 0}, {100, 0}, {100, 100}}));
-  const Mesh2DUVBuffer* uvbuf = MakeGarbageCollected<Mesh2DUVBuffer>(
-      base::MakeRefCounted<cc::RefCountedBuffer<SkPoint>>(
-          std::vector<SkPoint>{{0, 0}, {1, 0}, {1, 1}}));
-  const Mesh2DIndexBuffer* ibuf = MakeGarbageCollected<Mesh2DIndexBuffer>(
-      base::MakeRefCounted<cc::RefCountedBuffer<uint16_t>>(
-          std::vector<uint16_t>{0, 1, 2}));
-
-  Context2D()->beginLayer(GetScriptState(), BeginLayerOptions::Create(),
-                          no_exception);
-
-  // Throws inside layers:
-  DummyExceptionStateForTesting exception_state;
-  Context2D()->drawMesh(vbuf, uvbuf, ibuf, image, exception_state);
-  EXPECT_EQ(exception_state.CodeAs<DOMExceptionCode>(),
-            DOMExceptionCode::kInvalidStateError);
-
-  Context2D()->endLayer(no_exception);
-
-  // Doesn't throw outside layers:
-  Context2D()->drawMesh(vbuf, uvbuf, ibuf, image, no_exception);
-}
+  if (!IsPaintable()) {
+    // If the canvas element's bitmap has no pixels
 
 
 ============================================================
-TIM: canvas_toBlob  (Canvas fingerprint - toBlob)
+[P1] toBlob  (Canvas hash - toBlob)
 ============================================================
 --- html_canvas_element.cc | dong 1375 ---
 PATH: third_party\blink\renderer\core\html\canvas\html_canvas_element.cc
@@ -210,32 +98,6 @@ void HTMLCanvasElement::toBlob(V8BlobCallback* callback,
     v8::Local<v8::Value> v8_value = quality_argument.V8Value();
     if (v8_value->IsNumber())
       quality = v8_value.As<v8::Number>()->Value();
-
-
---- html_canvas_element.cc | dong 1390 ---
-PATH: third_party\blink\renderer\core\html\canvas\html_canvas_element.cc
-    exception_state.ThrowDOMException(
-        DOMExceptionCode::kInvalidStateError,
-        "`toBlob()` cannot be called with open layers.");
-    return;
-  }
-
-  if (!IsPaintable()) {
-    // If the canvas element's bitmap has no pixels
-    GetDocument()
-        .GetTaskRunner(TaskType::kCanvasBlobSerialization)
-        ->PostTask(FROM_HERE,
-                   BindOnce(&V8BlobCallback::InvokeAndReportException,
-                            WrapPersistent(callback), nullptr, nullptr));
-    return;
-  }
-
-  base::TimeTicks start_time = base::TimeTicks::Now();
-  double quality = kUndefinedQualityValue;
-  if (!quality_argument.IsEmpty()) {
-    v8::Local<v8::Value> v8_value = quality_argument.V8Value();
-    if (v8_value->IsNumber())
-      quality = v8_value.As<v8::Number>()->Value();
   }
 
   ImageEncodingMimeType encoding_mime_type =
@@ -246,254 +108,17 @@ PATH: third_party\blink\renderer\core\html\canvas\html_canvas_element.cc
   scoped_refptr<StaticBitmapImage> image_bitmap = Snapshot(kBackBuffer);
   if (image_bitmap) {
     auto* options = ImageEncodeOptions::Create();
-    options->setType(ImageEncoderUtils::MimeTypeName(encoding_mime_type));
-    async_creator = MakeGarbageCollected<CanvasAsyncBlobCreator>(
-        image_bitmap, options,
-        CanvasAsyncBlobCreator::kHTMLCanvasToBlobCallback, callback, start_time,
-        GetExecutionContext());
-
-
---- canvas_rendering_context_2d_api_test.cc | dong 497 ---
-PATH: third_party\blink\renderer\modules\canvas\canvas2d\canvas_rendering_context_2d_api_test.cc
-  // Throws inside layers:
-  DummyExceptionStateForTesting exception_state;
-  CanvasElement().toBlob(callback, /*mime_type=*/"image/png", exception_state);
-  EXPECT_EQ(exception_state.CodeAs<DOMExceptionCode>(),
-            DOMExceptionCode::kInvalidStateError);
-
-  Context2D()->endLayer(no_exception);
-
-  // Doesn't throw outside layers:
-  CanvasElement().toBlob(callback, /*mime_type=*/"image/png", no_exception);
-}
-
-// Checks `toDataURL` throws an exception if called inside a layer.
-TEST_F(CanvasRenderingContext2DAPITest, UnclosedLayerToDataUrl) {
-  ScopedCanvas2dLayersForTest layer_feature(/*enabled=*/true);
-  CreateContext(kNonOpaque);
-  NonThrowableExceptionState no_exception;
-
-  Context2D()->beginLayer(GetScriptState(), BeginLayerOptions::Create(),
-                          no_exception);
-
-  // Throws inside layers:
-  DummyExceptionStateForTesting exception_state;
-  CanvasElement().toDataURL(/*mime_type=*/"image/png", exception_state);
-  EXPECT_EQ(exception_state.CodeAs<DOMExceptionCode>(),
-            DOMExceptionCode::kInvalidStateError);
-
-  Context2D()->endLayer(no_exception);
-
-  // Doesn't throw outside layers:
-  CanvasElement().toDataURL(/*mime_type=*/"image/png", no_exception);
-}
-
-// Checks `drawMesh` throws an exception if called inside a layer.
-TEST_F(CanvasRenderingContext2DAPITest, UnclosedLayerDrawMesh) {
-  ScopedCanvas2dLayersForTest layer_feature(/*enabled=*/true);
-  CreateContext(kNonOpaque);
-
-
---- canvas_rendering_context_2d_api_test.cc | dong 504 ---
-PATH: third_party\blink\renderer\modules\canvas\canvas2d\canvas_rendering_context_2d_api_test.cc
-
-  // Doesn't throw outside layers:
-  CanvasElement().toBlob(callback, /*mime_type=*/"image/png", no_exception);
-}
-
-// Checks `toDataURL` throws an exception if called inside a layer.
-TEST_F(CanvasRenderingContext2DAPITest, UnclosedLayerToDataUrl) {
-  ScopedCanvas2dLayersForTest layer_feature(/*enabled=*/true);
-  CreateContext(kNonOpaque);
-  NonThrowableExceptionState no_exception;
-
-  Context2D()->beginLayer(GetScriptState(), BeginLayerOptions::Create(),
-                          no_exception);
-
-  // Throws inside layers:
-  DummyExceptionStateForTesting exception_state;
-  CanvasElement().toDataURL(/*mime_type=*/"image/png", exception_state);
-  EXPECT_EQ(exception_state.CodeAs<DOMExceptionCode>(),
-            DOMExceptionCode::kInvalidStateError);
-
-  Context2D()->endLayer(no_exception);
-
-  // Doesn't throw outside layers:
-  CanvasElement().toDataURL(/*mime_type=*/"image/png", no_exception);
-}
-
-// Checks `drawMesh` throws an exception if called inside a layer.
-TEST_F(CanvasRenderingContext2DAPITest, UnclosedLayerDrawMesh) {
-  ScopedCanvas2dLayersForTest layer_feature(/*enabled=*/true);
-  CreateContext(kNonOpaque);
-
-  NonThrowableExceptionState no_exception;
-  auto* image = MakeGarbageCollected<V8CanvasImageSource>(&CanvasElement());
-
-  const Mesh2DVertexBuffer* vbuf = MakeGarbageCollected<Mesh2DVertexBuffer>(
-      base::MakeRefCounted<cc::RefCountedBuffer<SkPoint>>(
-          std::vector<SkPoint>{{0, 0}, {100, 0}, {100, 100}}));
 
 
 ============================================================
-TIM: getImageData  (Canvas fingerprint - getImageData)
+[P1] getImageDataInternal  (Canvas hash - getImageData internal)
 ============================================================
---- html_canvas_element_test.cc | dong 94 ---
-PATH: third_party\blink\renderer\core\html\canvas\html_canvas_element_test.cc
-    ctx.fillStyle = 'red';
-    ctx.fillRect(0, 0, 10, 10);
-    ctx.getImageData(0, 0, 1, 1);  // Force a frame to be rendered.
-
-    canvas.width = 10;
-
-    ctx.fillStyle = 'blue';
-    ctx.fillRect(0, 0, 5, 5);
-  )JS");
-  GetDocument().body()->appendChild(script);
-  RunDocumentLifecycle();
-
-  auto* canvas =
-      To<HTMLCanvasElement>(GetDocument().getElementById(AtomicString("c")));
-
-  cc::PaintFlags fill_flags = FillFlags();
-  fill_flags.setColor(SkColors::kBlue);
-  EXPECT_THAT(
-      canvas->RenderingContext()->GetLastRecordingForCanvas2D(),
-      Optional(RecordedOpsAre(
-          PaintOpEq<DrawRectOp>(SkRect::MakeXYWH(0, 0, 10, 20),
-                                ClearRectFlags()),
-          PaintOpEq<DrawRectOp>(SkRect::MakeXYWH(0, 0, 5, 5), fill_flags))));
-}
-
-TEST_P(HTMLCanvasElementTest, CreateLayerUpdatesCompositing) {
-  // Enable script so that the canvas will create a LayoutHTMLCanvas.
-  GetDocument().GetSettings()->SetScriptEnabled(true);
-
-  SetBodyInnerHTML("<canvas id='canvas'></canvas>");
-  auto* canvas = To<HTMLCanvasElement>(
-      GetDocument().getElementById(AtomicString("canvas")));
-  EXPECT_FALSE(canvas->GetLayoutObject()
-                   ->FirstFragment()
-                   .PaintProperties()
-                   ->PaintOffsetTranslation());
-
-
-
---- print_context_test.cc | dong 1159 ---
-PATH: third_party\blink\renderer\core\page\print_context_test.cc
-      "'false'});"
-      "source_ctx.fillRect(0, 0, 1, 1);"
-      "image_data = source_ctx.getImageData(0, 0, 5, 5);"
-      "window.addEventListener('beforeprint', (ev) => {"
-      "  ctx = document.getElementById('c').getContext('2d');"
-      "  ctx.drawImage(source_canvas, 0, 0);"
-      // Touching source_ctx forces a flush of both contexts, which cancels
-      // vector printing.
-      "  source_ctx.putImageData(image_data, 0, 0);"
-      "  ctx.fillRect(0, 0, 1, 1);"
-      "});");
-  GetDocument().body()->AppendChild(script_element);
-
-  // Verify that the auto-flush caused the canvas printing to fall out of
-  // vector mode.
-  testing::Sequence s;
-  // The bitmap blit
-  EXPECT_CALL(canvas, onDrawImageRect2(_, _, _, _, _, _)).InSequence(s);
-  // The fill rect in the event listener should leave no trace here because
-  // it is supposed to be included in the canvas blit.
-  EXPECT_CALL(canvas, onDrawRect(_, _))
-      .Times(testing::Exactly(0))
-      .InSequence(s);
-
-  PrintSinglePage(canvas);
-}
-
-TEST_P(PrintContextOOPRCanvasTest, Canvas2DNoFlushForImageListener) {
-  // Verifies that a the canvas printing stays in vector mode after a
-  // canvas to canvas drawImage, as long as the source canvas is not
-  // touched afterwards.
-  MockPageContextCanvas canvas;
-  SetBodyInnerHTML("<canvas id='c' width=200 height=100></canvas>");
-  GetDocument().GetSettings()->SetScriptEnabled(true);
-  Element* const script_element =
-      GetDocument().CreateRawElement(html_names::kScriptTag);
-  script_element->setTextContent(
-
-
---- html_canvas_painter_test.cc | dong 83 ---
-PATH: third_party\blink\renderer\core\paint\html_canvas_painter_test.cc
-    ctx.fillStyle = 'red';
-    ctx.fillRect(0, 0, 10, 10);
-    ctx.getImageData(0, 0, 1, 1);  // Force a frame to be rendered.
-
-    canvas.width = 10;
-
-    ctx.fillStyle = 'blue';
-    ctx.fillRect(0, 0, 5, 5);
-  )JS");
-  GetDocument().body()->appendChild(script);
-  RunDocumentLifecycle();
-
-  auto* element = To<HTMLCanvasElement>(GetDocument().body()->firstChild());
-  CanvasRenderingContext* context = element->RenderingContext();
-
-  ASSERT_TRUE(context->IsComposited());
-  ASSERT_TRUE(element->IsAccelerated());
-
-  // Fetch the layer associated with the <canvas>, and check that it was
-  // correctly configured in the layer tree.
-  const cc::Layer* layer = context->CcLayer();
-  ASSERT_TRUE(layer);
-  EXPECT_TRUE(HasLayerAttached(*layer));
-  EXPECT_EQ(gfx::Size(10, 20), layer->bounds());
-}
-
-}  // namespace blink
-
-
---- base_rendering_context_2d.cc | dong 344 ---
+--- base_rendering_context_2d.cc | dong 350 ---
 PATH: third_party\blink\renderer\modules\canvas\canvas2d\base_rendering_context_2d.cc
-}
-
-ImageData* BaseRenderingContext2D::getImageData(
-    int sx,
-    int sy,
-    int sw,
     int sh,
     ExceptionState& exception_state) {
   return getImageDataInternal(sx, sy, sw, sh, /*image_data_settings=*/nullptr,
                               exception_state);
-}
-
-ImageData* BaseRenderingContext2D::getImageData(
-    int sx,
-    int sy,
-    int sw,
-    int sh,
-    ImageDataSettings* image_data_settings,
-    ExceptionState& exception_state) {
-  return getImageDataInternal(sx, sy, sw, sh, image_data_settings,
-                              exception_state);
-}
-perfetto::EventContext GetEventContext();
-
-ImageData* BaseRenderingContext2D::getImageDataInternal(
-    int sx,
-    int sy,
-    int sw,
-    int sh,
-    ImageDataSettings* image_data_settings,
-    ExceptionState& exception_state) {
-  if (!base::CheckMul(sw, sh).IsValid<int>()) {
-    exception_state.ThrowRangeError("Out of memory at ImageData creation");
-    return nullptr;
-  }
-
-  if (layer_count_ != 0) {
-
-
---- base_rendering_context_2d.cc | dong 354 ---
-PATH: third_party\blink\renderer\modules\canvas\canvas2d\base_rendering_context_2d.cc
 }
 
 ImageData* BaseRenderingContext2D::getImageData(
@@ -531,10 +156,82 @@ ImageData* BaseRenderingContext2D::getImageDataInternal(
     exception_state.ThrowSecurityError(
         "The canvas has been tainted by cross-origin data.");
   } else if (!sw || !sh) {
+    exception_state.ThrowDOMException(
+        DOMExceptionCode::kIndexSizeError,
+        UNSAFE_TODO(
+            String::Format("The source %s is 0.", sw ? "height" : "width")));
+  }
 
 
---- base_rendering_context_2d.cc | dong 381 ---
+
+--- base_rendering_context_2d.cc | dong 361 ---
 PATH: third_party\blink\renderer\modules\canvas\canvas2d\base_rendering_context_2d.cc
+    ImageDataSettings* image_data_settings,
+    ExceptionState& exception_state) {
+  return getImageDataInternal(sx, sy, sw, sh, image_data_settings,
+                              exception_state);
+}
+perfetto::EventContext GetEventContext();
+
+ImageData* BaseRenderingContext2D::getImageDataInternal(
+    int sx,
+    int sy,
+    int sw,
+    int sh,
+    ImageDataSettings* image_data_settings,
+    ExceptionState& exception_state) {
+  if (!base::CheckMul(sw, sh).IsValid<int>()) {
+    exception_state.ThrowRangeError("Out of memory at ImageData creation");
+    return nullptr;
+  }
+
+  if (layer_count_ != 0) {
+    exception_state.ThrowDOMException(
+        DOMExceptionCode::kInvalidStateError,
+        "`getImageData()` cannot be called with open layers.");
+    return nullptr;
+  }
+
+  if (!OriginClean()) {
+    exception_state.ThrowSecurityError(
+        "The canvas has been tainted by cross-origin data.");
+  } else if (!sw || !sh) {
+    exception_state.ThrowDOMException(
+        DOMExceptionCode::kIndexSizeError,
+        UNSAFE_TODO(
+            String::Format("The source %s is 0.", sw ? "height" : "width")));
+  }
+
+  if (exception_state.HadException())
+    return nullptr;
+
+  if (sw < 0) {
+    if (!base::CheckAdd(sx, sw).IsValid<int>()) {
+      exception_state.ThrowRangeError("Out of memory at ImageData creation");
+      return nullptr;
+    }
+    sx += sw;
+    sw = base::saturated_cast<int>(base::SafeUnsignedAbs(sw));
+  }
+
+
+--- base_rendering_context_2d.cc | dong 366 ---
+PATH: third_party\blink\renderer\modules\canvas\canvas2d\base_rendering_context_2d.cc
+perfetto::EventContext GetEventContext();
+
+ImageData* BaseRenderingContext2D::getImageDataInternal(
+    int sx,
+    int sy,
+    int sw,
+    int sh,
+    ImageDataSettings* image_data_settings,
+    ExceptionState& exception_state) {
+  if (!base::CheckMul(sw, sh).IsValid<int>()) {
+    exception_state.ThrowRangeError("Out of memory at ImageData creation");
+    return nullptr;
+  }
+
+  if (layer_count_ != 0) {
     exception_state.ThrowDOMException(
         DOMExceptionCode::kInvalidStateError,
         "`getImageData()` cannot be called with open layers.");
@@ -567,429 +264,631 @@ PATH: third_party\blink\renderer\modules\canvas\canvas2d\base_rendering_context_
       exception_state.ThrowRangeError("Out of memory at ImageData creation");
       return nullptr;
     }
-    sy += sh;
-    sh = base::saturated_cast<int>(base::SafeUnsignedAbs(sh));
-  }
-
-  if (!base::CheckAdd(sx, sw).IsValid<int>() ||
 
 
---- canvas_rendering_context_2d_api_test.cc | dong 332 ---
-PATH: third_party\blink\renderer\modules\canvas\canvas2d\canvas_rendering_context_2d_api_test.cc
-  DummyExceptionStateForTesting exception_state;
-  ImageDataSettings* settings = ImageDataSettings::Create();
-  ImageData* image_data = Context2D()->getImageData(0, 0, 1000000, 1000000,
-                                                    settings, exception_state);
-  EXPECT_EQ(nullptr, image_data);
-  EXPECT_TRUE(exception_state.HadException());
-  EXPECT_EQ(ESErrorType::kRangeError, exception_state.CodeAs<ESErrorType>());
+--- canvas_rendering_context_2d.cc | dong 754 ---
+PATH: third_party\blink\renderer\modules\canvas\canvas2d\canvas_rendering_context_2d.cc
 }
 
-TEST_F(CanvasRenderingContext2DAPITest,
-       GetImageDataIntegerOverflowNegativeParams) {
-  CreateContext(kNonOpaque);
-  ImageDataSettings* settings = ImageDataSettings::Create();
-  {
-    DummyExceptionStateForTesting exception_state;
-    ImageData* image_data = Context2D()->getImageData(
-        1, -2147483647, 1, -2147483647, settings, exception_state);
-    EXPECT_EQ(nullptr, image_data);
-    EXPECT_TRUE(exception_state.HadException());
-    EXPECT_EQ(ESErrorType::kRangeError, exception_state.CodeAs<ESErrorType>());
-  }
-
-  {
-    DummyExceptionStateForTesting exception_state;
-    ImageData* image_data = Context2D()->getImageData(
-        -2147483647, 1, -2147483647, 1, settings, exception_state);
-    EXPECT_EQ(nullptr, image_data);
-    EXPECT_TRUE(exception_state.HadException());
-    EXPECT_EQ(ESErrorType::kRangeError, exception_state.CodeAs<ESErrorType>());
-  }
+ImageData* CanvasRenderingContext2D::getImageDataInternal(
+    int sx,
+    int sy,
+    int sw,
+    int sh,
+    ImageDataSettings* image_data_settings,
+    ExceptionState& exception_state) {
+  UMA_HISTOGRAM_BOOLEAN(
+      "Blink.Canvas.GetImageData.WillReadFrequently",
+      CreationAttributes().will_read_frequently ==
+          CanvasContextCreationAttributesCore::WillReadFrequently::kTrue);
+  TRACE_EVENT0("blink", "GetImageData");
+  return BaseRenderingContext2D::getImageDataInternal(
+      sx, sy, sw, sh, image_data_settings, exception_state);
 }
 
-// Checks `CreateImageBitmap` throws an exception if called inside a layer.
-TEST_F(CanvasRenderingContext2DAPITest, UnclosedLayerCreateImageBitmap) {
-  V8TestingScope scope;
-  ScopedCanvas2dLayersForTest layer_feature(/*enabled=*/true);
-  CreateContext(kNonOpaque);
-
-
---- canvas_rendering_context_2d_api_test.cc | dong 345 ---
-PATH: third_party\blink\renderer\modules\canvas\canvas2d\canvas_rendering_context_2d_api_test.cc
-  {
-    DummyExceptionStateForTesting exception_state;
-    ImageData* image_data = Context2D()->getImageData(
-        1, -2147483647, 1, -2147483647, settings, exception_state);
-    EXPECT_EQ(nullptr, image_data);
-    EXPECT_TRUE(exception_state.HadException());
-    EXPECT_EQ(ESErrorType::kRangeError, exception_state.CodeAs<ESErrorType>());
-  }
-
-  {
-    DummyExceptionStateForTesting exception_state;
-    ImageData* image_data = Context2D()->getImageData(
-        -2147483647, 1, -2147483647, 1, settings, exception_state);
-    EXPECT_EQ(nullptr, image_data);
-    EXPECT_TRUE(exception_state.HadException());
-    EXPECT_EQ(ESErrorType::kRangeError, exception_state.CodeAs<ESErrorType>());
-  }
+DOMMatrix* CanvasRenderingContext2D::drawElement(
+    Element* element,
+    double dx,
+    double dy,
+    ExceptionState& exception_state) {
+  return DrawElementInternal(
+      element,
+      /*sx*/ std::nullopt, /*sy*/ std::nullopt,
+      /*swidth*/ std::nullopt, /*sheight*/ std::nullopt, dx, dy,
+      /*dwidth*/ std::nullopt, /*dheight*/ std::nullopt, exception_state);
 }
 
-// Checks `CreateImageBitmap` throws an exception if called inside a layer.
-TEST_F(CanvasRenderingContext2DAPITest, UnclosedLayerCreateImageBitmap) {
-  V8TestingScope scope;
-  ScopedCanvas2dLayersForTest layer_feature(/*enabled=*/true);
-  CreateContext(kNonOpaque);
-
-  NonThrowableExceptionState no_exception;
-  auto* image = MakeGarbageCollected<V8ImageBitmapSource>(&CanvasElement());
-  auto* options = ImageBitmapOptions::Create();
-
-  Context2D()->beginLayer(GetScriptState(), BeginLayerOptions::Create(),
-                          no_exception);
-
-  // Throws inside layers:
-  DummyExceptionStateForTesting exception_state;
-  ImageBitmapFactories::CreateImageBitmap(GetScriptState(), image, options,
-                                          exception_state);
-  EXPECT_EQ(exception_state.CodeAs<DOMExceptionCode>(),
-
-
---- canvas_rendering_context_2d_api_test.cc | dong 354 ---
-PATH: third_party\blink\renderer\modules\canvas\canvas2d\canvas_rendering_context_2d_api_test.cc
-  {
-    DummyExceptionStateForTesting exception_state;
-    ImageData* image_data = Context2D()->getImageData(
-        -2147483647, 1, -2147483647, 1, settings, exception_state);
-    EXPECT_EQ(nullptr, image_data);
-    EXPECT_TRUE(exception_state.HadException());
-    EXPECT_EQ(ESErrorType::kRangeError, exception_state.CodeAs<ESErrorType>());
-  }
+DOMMatrix* CanvasRenderingContext2D::drawElement(
+    Element* element,
+    double dx,
+    double dy,
+    double dwidth,
+    double dheight,
+    ExceptionState& exception_state) {
+  return DrawElementInternal(element,
+                             /*sx*/ std::nullopt, /*sy*/ std::nullopt,
+                             /*swidth*/ std::nullopt, /*sheight*/ std::nullopt,
+                             dx, dy, dwidth, dheight, exception_state);
 }
 
-// Checks `CreateImageBitmap` throws an exception if called inside a layer.
-TEST_F(CanvasRenderingContext2DAPITest, UnclosedLayerCreateImageBitmap) {
-  V8TestingScope scope;
-  ScopedCanvas2dLayersForTest layer_feature(/*enabled=*/true);
-  CreateContext(kNonOpaque);
+DOMMatrix* CanvasRenderingContext2D::drawElementImage(
+    Element* element,
+    double dx,
+    double dy,
 
-  NonThrowableExceptionState no_exception;
-  auto* image = MakeGarbageCollected<V8ImageBitmapSource>(&CanvasElement());
-  auto* options = ImageBitmapOptions::Create();
 
-  Context2D()->beginLayer(GetScriptState(), BeginLayerOptions::Create(),
-                          no_exception);
-
-  // Throws inside layers:
-  DummyExceptionStateForTesting exception_state;
-  ImageBitmapFactories::CreateImageBitmap(GetScriptState(), image, options,
-                                          exception_state);
-  EXPECT_EQ(exception_state.CodeAs<DOMExceptionCode>(),
-            DOMExceptionCode::kInvalidStateError);
-
-  Context2D()->endLayer(no_exception);
-
-  // Doesn't throw outside layers:
-  ImageBitmapFactories::CreateImageBitmap(GetScriptState(), image, options,
-                                          no_exception);
+--- canvas_rendering_context_2d.cc | dong 766 ---
+PATH: third_party\blink\renderer\modules\canvas\canvas2d\canvas_rendering_context_2d.cc
+          CanvasContextCreationAttributesCore::WillReadFrequently::kTrue);
+  TRACE_EVENT0("blink", "GetImageData");
+  return BaseRenderingContext2D::getImageDataInternal(
+      sx, sy, sw, sh, image_data_settings, exception_state);
 }
 
-
-
---- canvas_rendering_context_2d_api_test.cc | dong 447 ---
-PATH: third_party\blink\renderer\modules\canvas\canvas2d\canvas_rendering_context_2d_api_test.cc
-  // Throws inside layers:
-  DummyExceptionStateForTesting exception_state;
-  Context2D()->getImageData(/*sx=*/0, /*sy=*/0, /*sw=*/1, /*sh=*/1,
-                            exception_state);
-  EXPECT_EQ(exception_state.CodeAs<DOMExceptionCode>(),
-            DOMExceptionCode::kInvalidStateError);
-
-  Context2D()->endLayer(no_exception);
-
-  // Doesn't throw outside layers:
-  Context2D()->getImageData(/*sx=*/0, /*sy=*/0, /*sw=*/1, /*sh=*/1,
-                            no_exception);
+DOMMatrix* CanvasRenderingContext2D::drawElement(
+    Element* element,
+    double dx,
+    double dy,
+    ExceptionState& exception_state) {
+  return DrawElementInternal(
+      element,
+      /*sx*/ std::nullopt, /*sy*/ std::nullopt,
+      /*swidth*/ std::nullopt, /*sheight*/ std::nullopt, dx, dy,
+      /*dwidth*/ std::nullopt, /*dheight*/ std::nullopt, exception_state);
 }
 
-// Checks `putImageData` throws an exception if called inside a layer.
-TEST_F(CanvasRenderingContext2DAPITest, UnclosedLayerPutImageData) {
-  ScopedCanvas2dLayersForTest layer_feature(/*enabled=*/true);
-  CreateContext(kNonOpaque);
-
-  NonThrowableExceptionState no_exception;
-  ImageData* image_data = ImageData::Create(
-      Context2D()->Width(), Context2D()->Height(), no_exception);
-
-  Context2D()->beginLayer(GetScriptState(), BeginLayerOptions::Create(),
-                          no_exception);
-
-  // Throws inside layers:
-  DummyExceptionStateForTesting exception_state;
-  Context2D()->putImageData(image_data, /*dx=*/0, /*dy=*/0, exception_state);
-  EXPECT_EQ(exception_state.CodeAs<DOMExceptionCode>(),
-            DOMExceptionCode::kInvalidStateError);
-
-  Context2D()->endLayer(no_exception);
-
-  // Doesn't throw outside layers:
-  Context2D()->putImageData(image_data, /*dx=*/0, /*dy=*/0, no_exception);
+DOMMatrix* CanvasRenderingContext2D::drawElement(
+    Element* element,
+    double dx,
+    double dy,
+    double dwidth,
+    double dheight,
+    ExceptionState& exception_state) {
+  return DrawElementInternal(element,
+                             /*sx*/ std::nullopt, /*sy*/ std::nullopt,
+                             /*swidth*/ std::nullopt, /*sheight*/ std::nullopt,
+                             dx, dy, dwidth, dheight, exception_state);
 }
 
-
---- canvas_rendering_context_2d_api_test.cc | dong 455 ---
-PATH: third_party\blink\renderer\modules\canvas\canvas2d\canvas_rendering_context_2d_api_test.cc
-
-  // Doesn't throw outside layers:
-  Context2D()->getImageData(/*sx=*/0, /*sy=*/0, /*sw=*/1, /*sh=*/1,
-                            no_exception);
+DOMMatrix* CanvasRenderingContext2D::drawElementImage(
+    Element* element,
+    double dx,
+    double dy,
+    ExceptionState& exception_state) {
+  return DrawElementInternal(
+      element,
+      /*sx*/ std::nullopt, /*sy*/ std::nullopt,
+      /*swidth*/ std::nullopt, /*sheight*/ std::nullopt, dx, dy,
+      /*dwidth*/ std::nullopt, /*dheight*/ std::nullopt, exception_state);
 }
 
-// Checks `putImageData` throws an exception if called inside a layer.
-TEST_F(CanvasRenderingContext2DAPITest, UnclosedLayerPutImageData) {
-  ScopedCanvas2dLayersForTest layer_feature(/*enabled=*/true);
-  CreateContext(kNonOpaque);
-
-  NonThrowableExceptionState no_exception;
-  ImageData* image_data = ImageData::Create(
-      Context2D()->Width(), Context2D()->Height(), no_exception);
-
-  Context2D()->beginLayer(GetScriptState(), BeginLayerOptions::Create(),
-                          no_exception);
-
-  // Throws inside layers:
-  DummyExceptionStateForTesting exception_state;
-  Context2D()->putImageData(image_data, /*dx=*/0, /*dy=*/0, exception_state);
-  EXPECT_EQ(exception_state.CodeAs<DOMExceptionCode>(),
-            DOMExceptionCode::kInvalidStateError);
-
-  Context2D()->endLayer(no_exception);
-
-  // Doesn't throw outside layers:
-  Context2D()->putImageData(image_data, /*dx=*/0, /*dy=*/0, no_exception);
-}
-
-// Checks `toBlob` throws an exception if called inside a layer.
-TEST_F(CanvasRenderingContext2DAPITest, UnclosedLayerToBlob) {
-  V8TestingScope scope;
-  ScopedCanvas2dLayersForTest layer_feature(/*enabled=*/true);
-  CreateContext(kNonOpaque);
-
-  NonThrowableExceptionState no_exception;
-
-
---- canvas_rendering_context_2d_test.cc | dong 1582 ---
-PATH: third_party\blink\renderer\modules\canvas\canvas2d\canvas_rendering_context_2d_test.cc
-  int read_count = BaseRenderingContext2D::kFallbackToCPUAfterReadbacks;
-  while (read_count--) {
-    Context2D()->getImageData(0, 0, 1, 1, settings, exception_state);
-  }
-  EXPECT_EQ(CanvasElement().GetRasterModeForCanvas2D(), RasterMode::kCPU);
-}
-
-TEST_P(CanvasRenderingContext2DTest, AutoFlush) {
-  CreateContext(kNonOpaque);
-  gfx::Size size(10, 10);
-  CanvasElement().SetPreferred2DRasterMode(RasterModeHint::kPreferGPU);
-  Context2D()->SetCanvas2DResourceProviderForTesting(
-      /*provider=*/nullptr, size);
-  Context2D()->fillRect(0, 0, 1, 1);  // Ensure resource provider is created.
-  const size_t initial_op_count = Context2D()->Recorder()->TotalOpCount();
-
-  while (Context2D()->Recorder()->TotalOpBytesUsed() <=
-         kMaxRecordedOpKB * 1024) {
-    Context2D()->fillRect(0, 0, 1, 1);
-    // Verify that auto-flush did not happen
-    ASSERT_GT(Context2D()->Recorder()->TotalOpCount(), initial_op_count);
-  }
-  Context2D()->fillRect(0, 0, 1, 1);
-  // Verify that auto-flush happened
-  ASSERT_EQ(Context2D()->Recorder()->TotalOpCount(), initial_op_count);
-}
-
-TEST_P(CanvasRenderingContext2DTest, AutoFlushPinnedImages) {
-  CreateContext(kNonOpaque);
-  gfx::Size size(10, 10);
-  CanvasElement().SetPreferred2DRasterMode(RasterModeHint::kPreferGPU);
-  Context2D()->SetCanvas2DResourceProviderForTesting(
-      /*provider=*/nullptr, size);
-
-  Context2D()->fillRect(0, 0, 1, 1);  // Ensure resource provider is created.
-
-  constexpr unsigned int kImageSize = 10;
-
-
---- canvas_rendering_context_2d_test.cc | dong 2055 ---
-PATH: third_party\blink\renderer\modules\canvas\canvas2d\canvas_rendering_context_2d_test.cc
-  ImageDataSettings* settings = ImageDataSettings::Create();
-  EXPECT_EQ(CanvasElement().GetRasterModeForCanvas2D(), RasterMode::kGPU);
-  Context2D()->getImageData(0, 0, 1, 1, settings, exception_state);
-  EXPECT_EQ(CanvasElement().GetRasterModeForCanvas2D(), RasterMode::kGPU);
-}
-
-TEST_P(CanvasRenderingContext2DTestAccelerated,
-       GetImageDataDoesntEndHibernation) {
-  base::test::ScopedFeatureList scoped_feature_list;
-  scoped_feature_list.InitWithFeatures({features::kCanvas2DHibernation}, {});
-
-  CreateContext(kNonOpaque);
-  Context2D()->GetOrCreateResourceProvider();
-
-  auto& handler = CHECK_DEREF(Context2D()->GetHibernationHandler());
-  ASSERT_FALSE(handler.IsHibernating());
-
-  GetDocument().GetPage()->SetVisibilityState(
-      mojom::blink::PageVisibilityState::kHidden,
-      /*is_initial_state=*/false);
-
-  WaitForHibernation();
-  ASSERT_TRUE(handler.IsHibernating());
-
-  NonThrowableExceptionState exception_state;
-  Context2D()->getImageData(0, 0, 1, 1, exception_state);
-
-  EXPECT_TRUE(handler.IsHibernating());
-}
-
-// https://crbug.com/708445: When the canvas hibernates or wakes up from
-// hibernation, the compositing reasons for the canvas element may change. In
-// these cases, the element should request a compositing update.
-TEST_P(CanvasRenderingContext2DTestAccelerated,
-       ElementRequestsCompositingUpdateOnHibernateAndWakeUp) {
-  CreateContext(kNonOpaque);
-  gfx::Size size(300, 300);
-
-
---- canvas_rendering_context_2d_test.cc | dong 2078 ---
-PATH: third_party\blink\renderer\modules\canvas\canvas2d\canvas_rendering_context_2d_test.cc
-
-  NonThrowableExceptionState exception_state;
-  Context2D()->getImageData(0, 0, 1, 1, exception_state);
-
-  EXPECT_TRUE(handler.IsHibernating());
-}
-
-// https://crbug.com/708445: When the canvas hibernates or wakes up from
-// hibernation, the compositing reasons for the canvas element may change. In
-// these cases, the element should request a compositing update.
-TEST_P(CanvasRenderingContext2DTestAccelerated,
-       ElementRequestsCompositingUpdateOnHibernateAndWakeUp) {
-  CreateContext(kNonOpaque);
-  gfx::Size size(300, 300);
-  CanvasElement().SetPreferred2DRasterMode(RasterModeHint::kPreferGPU);
-  CanvasElement().SetSize(size);
-
-  // Trigger resource provider creation.
-  Context2D()->fillRect(3, 3, 1, 1);
-  EXPECT_TRUE(!!Context2D()->GetResourceProviderForTesting());
-  EXPECT_EQ(CanvasElement().GetRasterModeForCanvas2D(), RasterMode::kGPU);
-
-  auto* box = CanvasElement().GetLayoutBoxModelObject();
-  EXPECT_TRUE(box);
-  PaintLayer* painting_layer = box->PaintingLayer();
-  EXPECT_TRUE(painting_layer);
-  UpdateAllLifecyclePhasesForTest();
-
-  // Hide element to trigger hibernation (if enabled).
-  SetDocumentVisibility(GetDocument(), PageVisibilityState::kHidden);
-
-  // The above fillRect() call caused the CanvasPerformanceMonitor to start
-  // observing tasks. Reset this task observation before running pending tasks
-  // to avoid a CHECK that goes off in its WillProcessTask() method due to its
-  // not being expected to be called at this point in the flow.
-  CanvasRenderingContext::GetCanvasPerformanceMonitor().ResetForTesting();
-
-
-
---- offscreen_canvas_rendering_context_2d_test.cc | dong 214 ---
-PATH: third_party\blink\renderer\modules\canvas\offscreencanvas2d\offscreen_canvas_rendering_context_2d_test.cc
-
-  // Throws inside layers:
-  context->getImageData(/*sx=*/0, /*sy=*/0, /*sw=*/1, /*sh=*/1,
-                        scope.GetExceptionState());
-  EXPECT_EQ(scope.GetExceptionState().CodeAs<DOMExceptionCode>(),
-            DOMExceptionCode::kInvalidStateError);
-
-  context->endLayer(no_exception);
-
-  // Doesn't throw outside layers:
-  context->getImageData(/*sx=*/0, /*sy=*/0, /*sw=*/1, /*sh=*/1, no_exception);
-}
-
-// Checks `putImageData` throws an exception if called inside a layer.
-TEST(OffscreenCanvasRenderingContext2DTest, UnclosedLayerPutImageData) {
-  test::TaskEnvironment task_environment;
-  ScopedCanvas2dLayersForTest layer_feature(/*enabled=*/true);
-  V8TestingScope scope;
-  auto* host = OffscreenCanvas::Create(scope.GetScriptState(), /*width=*/10,
-                                       /*height=*/10);
-  OffscreenCanvasRenderingContext2D* context = GetContext(scope, host);
-
-  NonThrowableExceptionState no_exception;
-  ImageData* image_data =
-      ImageData::Create(context->Width(), context->Height(), no_exception);
-
-  context->beginLayer(scope.GetScriptState(), BeginLayerOptions::Create(),
-                      no_exception);
-
-  // Throws inside layers:
-  context->putImageData(image_data, /*dx=*/0, /*dy=*/0,
-                        scope.GetExceptionState());
-  EXPECT_EQ(scope.GetExceptionState().CodeAs<DOMExceptionCode>(),
-            DOMExceptionCode::kInvalidStateError);
-
-  context->endLayer(no_exception);
-
-
-
---- offscreen_canvas_rendering_context_2d_test.cc | dong 222 ---
-PATH: third_party\blink\renderer\modules\canvas\offscreencanvas2d\offscreen_canvas_rendering_context_2d_test.cc
-
-  // Doesn't throw outside layers:
-  context->getImageData(/*sx=*/0, /*sy=*/0, /*sw=*/1, /*sh=*/1, no_exception);
-}
-
-// Checks `putImageData` throws an exception if called inside a layer.
-TEST(OffscreenCanvasRenderingContext2DTest, UnclosedLayerPutImageData) {
-  test::TaskEnvironment task_environment;
-  ScopedCanvas2dLayersForTest layer_feature(/*enabled=*/true);
-  V8TestingScope scope;
-  auto* host = OffscreenCanvas::Create(scope.GetScriptState(), /*width=*/10,
-                                       /*height=*/10);
-  OffscreenCanvasRenderingContext2D* context = GetContext(scope, host);
-
-  NonThrowableExceptionState no_exception;
-  ImageData* image_data =
-      ImageData::Create(context->Width(), context->Height(), no_exception);
-
-  context->beginLayer(scope.GetScriptState(), BeginLayerOptions::Create(),
-                      no_exception);
-
-  // Throws inside layers:
-  context->putImageData(image_data, /*dx=*/0, /*dy=*/0,
-                        scope.GetExceptionState());
-  EXPECT_EQ(scope.GetExceptionState().CodeAs<DOMExceptionCode>(),
-            DOMExceptionCode::kInvalidStateError);
-
-  context->endLayer(no_exception);
-
-  // Doesn't throw outside layers:
-  context->putImageData(image_data, /*dx=*/0, /*dy=*/0, no_exception);
-}
-
-// Checks `transferToImageBitmap` throws an exception if called inside a layer.
-TEST(OffscreenCanvasRenderingContext2DTest,
-     UnclosedLayerTransferToImageBitmap) {
-  test::TaskEnvironment task_environment;
+DOMMatrix* CanvasRenderingContext2D::drawElementImage(
+    Element* element,
+    double dx,
+    double dy,
 
 
 ============================================================
-TIM: getFloatFrequencyData  (AudioContext fingerprint)
+[P1] SnapshotInternal  (Canvas snapshot internal)
 ============================================================
---- analyser_node.cc | dong 119 ---
+--- scroll_snapshot_timeline.cc | dong 186 ---
+PATH: third_party\blink\renderer\core\animation\scroll_snapshot_timeline.cc
+
+bool ScrollSnapshotTimeline::UpdateSnapshot() {
+  return UpdateSnapshotInternal(/*service_animations=*/false);
+}
+
+void ScrollSnapshotTimeline::UpdateSnapshotForServiceAnimations() {
+  UpdateSnapshotInternal(/*service_animations=*/true);
+}
+
+bool ScrollSnapshotTimeline::UpdateSnapshotInternal(bool service_animations) {
+  TimelineState new_state = ComputeTimelineState();
+  bool snapshot_changed = timeline_state_snapshotted_ != new_state;
+  bool layout_changed =
+      !timeline_state_snapshotted_.HasConsistentLayout(new_state);
+  // Note that `timeline_state_snapshotted_` must be updated before
+  // ResolveTimelineOffsets is called.
+  timeline_state_snapshotted_ = new_state;
+  ResolveTimelineOffsets();
+
+  const HeapHashSet<WeakMember<Animation>>& animations = GetAnimations();
+
+  if (RuntimeEnabledFeatures::TimelineTriggerEnabled() &&
+      (snapshot_changed || update_triggers_)) {
+    for (TimelineTrigger* trigger : GetTriggers()) {
+      bool trigger_changed = !trigger->Update();
+      if (trigger_changed) {
+        for (auto& [animation, behaviors] : trigger->BehaviorMap()) {
+          // Avoid superfluous snapshot validation, by skipping the call if it
+          // will be invoked in the loop below.
+          DCHECK(animation->CurrentTimeInternal());
+          if (!animations.Contains(animation)) {
+            animation->OnValidateSnapshot(true);
+          }
+        }
+      }
+      snapshot_changed |= trigger_changed;
+    }
+    update_triggers_ = false;
+  }
+
+  for (Animation* animation : animations) {
+    // Avoid setting a deferred start time during the update snapshot phase.
+    // Instead wait for the validation phase post layout.
+    // Skipping OnValidateSnapshot here is necessary for not firing too many
+    // animation events. See: https://crbug.com/40925697
+    if (service_animations && !animation->CurrentTimeInternal()) {
+      continue;
+
+
+--- scroll_snapshot_timeline.cc | dong 190 ---
+PATH: third_party\blink\renderer\core\animation\scroll_snapshot_timeline.cc
+
+void ScrollSnapshotTimeline::UpdateSnapshotForServiceAnimations() {
+  UpdateSnapshotInternal(/*service_animations=*/true);
+}
+
+bool ScrollSnapshotTimeline::UpdateSnapshotInternal(bool service_animations) {
+  TimelineState new_state = ComputeTimelineState();
+  bool snapshot_changed = timeline_state_snapshotted_ != new_state;
+  bool layout_changed =
+      !timeline_state_snapshotted_.HasConsistentLayout(new_state);
+  // Note that `timeline_state_snapshotted_` must be updated before
+  // ResolveTimelineOffsets is called.
+  timeline_state_snapshotted_ = new_state;
+  ResolveTimelineOffsets();
+
+  const HeapHashSet<WeakMember<Animation>>& animations = GetAnimations();
+
+  if (RuntimeEnabledFeatures::TimelineTriggerEnabled() &&
+      (snapshot_changed || update_triggers_)) {
+    for (TimelineTrigger* trigger : GetTriggers()) {
+      bool trigger_changed = !trigger->Update();
+      if (trigger_changed) {
+        for (auto& [animation, behaviors] : trigger->BehaviorMap()) {
+          // Avoid superfluous snapshot validation, by skipping the call if it
+          // will be invoked in the loop below.
+          DCHECK(animation->CurrentTimeInternal());
+          if (!animations.Contains(animation)) {
+            animation->OnValidateSnapshot(true);
+          }
+        }
+      }
+      snapshot_changed |= trigger_changed;
+    }
+    update_triggers_ = false;
+  }
+
+  for (Animation* animation : animations) {
+    // Avoid setting a deferred start time during the update snapshot phase.
+    // Instead wait for the validation phase post layout.
+    // Skipping OnValidateSnapshot here is necessary for not firing too many
+    // animation events. See: https://crbug.com/40925697
+    if (service_animations && !animation->CurrentTimeInternal()) {
+      continue;
+    }
+    // Compute deferred start times and update animation timing if required.
+    snapshot_changed |= !animation->OnValidateSnapshot(layout_changed);
+  }
+
+
+--- scroll_snapshot_timeline.cc | dong 193 ---
+PATH: third_party\blink\renderer\core\animation\scroll_snapshot_timeline.cc
+}
+
+bool ScrollSnapshotTimeline::UpdateSnapshotInternal(bool service_animations) {
+  TimelineState new_state = ComputeTimelineState();
+  bool snapshot_changed = timeline_state_snapshotted_ != new_state;
+  bool layout_changed =
+      !timeline_state_snapshotted_.HasConsistentLayout(new_state);
+  // Note that `timeline_state_snapshotted_` must be updated before
+  // ResolveTimelineOffsets is called.
+  timeline_state_snapshotted_ = new_state;
+  ResolveTimelineOffsets();
+
+  const HeapHashSet<WeakMember<Animation>>& animations = GetAnimations();
+
+  if (RuntimeEnabledFeatures::TimelineTriggerEnabled() &&
+      (snapshot_changed || update_triggers_)) {
+    for (TimelineTrigger* trigger : GetTriggers()) {
+      bool trigger_changed = !trigger->Update();
+      if (trigger_changed) {
+        for (auto& [animation, behaviors] : trigger->BehaviorMap()) {
+          // Avoid superfluous snapshot validation, by skipping the call if it
+          // will be invoked in the loop below.
+          DCHECK(animation->CurrentTimeInternal());
+          if (!animations.Contains(animation)) {
+            animation->OnValidateSnapshot(true);
+          }
+        }
+      }
+      snapshot_changed |= trigger_changed;
+    }
+    update_triggers_ = false;
+  }
+
+  for (Animation* animation : animations) {
+    // Avoid setting a deferred start time during the update snapshot phase.
+    // Instead wait for the validation phase post layout.
+    // Skipping OnValidateSnapshot here is necessary for not firing too many
+    // animation events. See: https://crbug.com/40925697
+    if (service_animations && !animation->CurrentTimeInternal()) {
+      continue;
+    }
+    // Compute deferred start times and update animation timing if required.
+    snapshot_changed |= !animation->OnValidateSnapshot(layout_changed);
+  }
+
+  return snapshot_changed;
+}
+
+
+--- gpu_canvas_context.cc | dong 197 ---
+PATH: third_party\blink\renderer\modules\webgpu\gpu_canvas_context.cc
+  // If there is a current texture, create a snapshot from it.
+  if (texture_ && !texture_->IsDestroyed()) {
+    return SnapshotInternal(texture_->GetHandle());
+  } else if (swap_texture_) {
+    return SnapshotInternal(swap_texture_->GetHandle());
+  }
+
+  // If there is no current texture, return a snapshot of the front buffer if
+  // possible.
+  auto front_buffer_texture = GetFrontBufferMailboxTexture();
+  if (!front_buffer_texture) {
+    return nullptr;
+  }
+
+  return SnapshotInternal(front_buffer_texture->GetTexture());
+}
+
+CanvasResourceProviderSharedImage*
+GPUCanvasContext::GetOrCreateCanvasResourceProvider() {
+  auto* provider = resource_provider_.get();
+  if (!provider && !did_fail_to_create_resource_provider_) {
+    if (Host()->IsValidImageSize()) {
+      if (SharedGpuContext::IsGpuCompositingEnabled()) {
+        // This code path could be used for compositing so add the necessary
+        // shared image usage flags.
+        resource_provider_ = CanvasResourceProvider::CreateWebGPUImageProvider(
+            Host()->Size(), GetSharedImageFormat(), GetAlphaType(),
+            GetColorSpace(), swap_buffers_->GetSharedImageUsagesForDisplay(),
+            Host());
+      }
+      Host()->UpdateMemoryUsage();
+      provider = resource_provider_.get();
+    }
+    if (!provider) {
+      did_fail_to_create_resource_provider_ = true;
+    } else if (provider->IsValid()) {
+      base::UmaHistogramBoolean("Blink.Canvas.ResourceProviderIsAccelerated",
+                                provider->IsAccelerated());
+      base::UmaHistogramEnumeration("Blink.Canvas.ResourceProviderType",
+                                    provider->GetType());
+    }
+  }
+  return provider;
+}
+
+CanvasResourceProviderSharedImage*
+GPUCanvasContext::PaintRenderingResultsToCanvas(
+
+
+--- gpu_canvas_context.cc | dong 199 ---
+PATH: third_party\blink\renderer\modules\webgpu\gpu_canvas_context.cc
+    return SnapshotInternal(texture_->GetHandle());
+  } else if (swap_texture_) {
+    return SnapshotInternal(swap_texture_->GetHandle());
+  }
+
+  // If there is no current texture, return a snapshot of the front buffer if
+  // possible.
+  auto front_buffer_texture = GetFrontBufferMailboxTexture();
+  if (!front_buffer_texture) {
+    return nullptr;
+  }
+
+  return SnapshotInternal(front_buffer_texture->GetTexture());
+}
+
+CanvasResourceProviderSharedImage*
+GPUCanvasContext::GetOrCreateCanvasResourceProvider() {
+  auto* provider = resource_provider_.get();
+  if (!provider && !did_fail_to_create_resource_provider_) {
+    if (Host()->IsValidImageSize()) {
+      if (SharedGpuContext::IsGpuCompositingEnabled()) {
+        // This code path could be used for compositing so add the necessary
+        // shared image usage flags.
+        resource_provider_ = CanvasResourceProvider::CreateWebGPUImageProvider(
+            Host()->Size(), GetSharedImageFormat(), GetAlphaType(),
+            GetColorSpace(), swap_buffers_->GetSharedImageUsagesForDisplay(),
+            Host());
+      }
+      Host()->UpdateMemoryUsage();
+      provider = resource_provider_.get();
+    }
+    if (!provider) {
+      did_fail_to_create_resource_provider_ = true;
+    } else if (provider->IsValid()) {
+      base::UmaHistogramBoolean("Blink.Canvas.ResourceProviderIsAccelerated",
+                                provider->IsAccelerated());
+      base::UmaHistogramEnumeration("Blink.Canvas.ResourceProviderType",
+                                    provider->GetType());
+    }
+  }
+  return provider;
+}
+
+CanvasResourceProviderSharedImage*
+GPUCanvasContext::PaintRenderingResultsToCanvas(
+    SourceDrawingBuffer source_buffer) {
+  if (!swap_buffers_) {
+
+
+--- gpu_canvas_context.cc | dong 209 ---
+PATH: third_party\blink\renderer\modules\webgpu\gpu_canvas_context.cc
+  }
+
+  return SnapshotInternal(front_buffer_texture->GetTexture());
+}
+
+CanvasResourceProviderSharedImage*
+GPUCanvasContext::GetOrCreateCanvasResourceProvider() {
+  auto* provider = resource_provider_.get();
+  if (!provider && !did_fail_to_create_resource_provider_) {
+    if (Host()->IsValidImageSize()) {
+      if (SharedGpuContext::IsGpuCompositingEnabled()) {
+        // This code path could be used for compositing so add the necessary
+        // shared image usage flags.
+        resource_provider_ = CanvasResourceProvider::CreateWebGPUImageProvider(
+            Host()->Size(), GetSharedImageFormat(), GetAlphaType(),
+            GetColorSpace(), swap_buffers_->GetSharedImageUsagesForDisplay(),
+            Host());
+      }
+      Host()->UpdateMemoryUsage();
+      provider = resource_provider_.get();
+    }
+    if (!provider) {
+      did_fail_to_create_resource_provider_ = true;
+    } else if (provider->IsValid()) {
+      base::UmaHistogramBoolean("Blink.Canvas.ResourceProviderIsAccelerated",
+                                provider->IsAccelerated());
+      base::UmaHistogramEnumeration("Blink.Canvas.ResourceProviderType",
+                                    provider->GetType());
+    }
+  }
+  return provider;
+}
+
+CanvasResourceProviderSharedImage*
+GPUCanvasContext::PaintRenderingResultsToCanvas(
+    SourceDrawingBuffer source_buffer) {
+  if (!swap_buffers_) {
+    return resource_provider_.get();
+  }
+
+  if (resource_provider_.get() &&
+      resource_provider_.get()->Size() != swap_buffers_->Size()) {
+    resource_provider_.reset();
+    Host()->DiscardResources();
+  }
+
+  auto* resource_provider = GetOrCreateCanvasResourceProvider();
+
+
+--- gpu_canvas_context.cc | dong 1029 ---
+PATH: third_party\blink\renderer\modules\webgpu\gpu_canvas_context.cc
+}
+
+scoped_refptr<StaticBitmapImage> GPUCanvasContext::SnapshotInternal(
+    const wgpu::Texture& texture) const {
+  gfx::Size size(texture.GetWidth(), texture.GetHeight());
+
+  // We tag the SharedImage inside the WebGPUImageProvider with display usages
+  // since there are uncommon paths which may use this snapshot for compositing.
+  // These paths are usually related to either printing or either video and
+  // usually related to OffscreenCanvas; in cases where the image created from
+  // this Snapshot will be sent eventually to the Display Compositor.
+  auto resource_provider = CanvasResourceProvider::CreateWebGPUImageProvider(
+      size, GetSharedImageFormat(), GetAlphaType(), GetColorSpace(),
+      swap_buffers_->GetSharedImageUsagesForDisplay());
+  if (!resource_provider)
+    return nullptr;
+
+  if (!CopyTextureToResourceProvider(texture, resource_provider.get())) {
+    return nullptr;
+  }
+
+  return resource_provider->Snapshot();
+}
+
+base::WeakPtr<WebGraphicsContext3DProviderWrapper>
+GPUCanvasContext::GetContextProviderWeakPtr() const {
+  return device_->GetDawnControlClient()->GetContextProviderWeakPtr();
+}
+
+scoped_refptr<StaticBitmapImage>
+GPUCanvasContext::MakeFallbackStaticBitmapImage(
+    V8GPUCanvasAlphaMode::Enum alpha_mode) {
+  // It is not possible to create an empty image bitmap, return null in that
+  // case which will fail ImageBitmap creation with an exception instead.
+  gfx::Size size = Host()->Size();
+  if (size.IsEmpty()) {
+    return nullptr;
+  }
+
+  // We intentionally leave the image in legacy color space.
+  SkBitmap black_bitmap;
+  if (!black_bitmap.tryAllocN32Pixels(size.width(), size.height())) {
+    // It is not possible to create such a big image bitmap, return null in
+    // that case which will fail ImageBitmap creation with an exception
+    // instead.
+    return nullptr;
+  }
+
+
+============================================================
+[P1] ToDataURLInternal  (Canvas ToDataURLInternal)
+============================================================
+--- html_canvas_element.cc | dong 1260 ---
+PATH: third_party\blink\renderer\core\html\canvas\html_canvas_element.cc
+
+const AtomicString HTMLCanvasElement::ImageSourceURL() const {
+  return AtomicString(ToDataURLInternal(
+      ImageEncoderUtils::kDefaultRequestedMimeType, 0, kFrontBuffer));
+}
+
+scoped_refptr<StaticBitmapImage> HTMLCanvasElement::Snapshot(
+    SourceDrawingBuffer source_buffer) const {
+  if (Size().IsEmpty()) {
+    return nullptr;
+  }
+
+  scoped_refptr<StaticBitmapImage> image_bitmap;
+  if (HasOffscreenCanvasFrame()) {  // Offscreen Canvas
+    DCHECK(OffscreenCanvasFrame()->OriginClean());
+    image_bitmap = OffscreenCanvasFrame()->Bitmap();
+  } else if (IsWebGL()) {
+    if (context_->CreationAttributes().premultiplied_alpha) {
+      image_bitmap = context_->PaintRenderingResultsToSnapshot(source_buffer);
+    } else {
+      image_bitmap =
+          context_->GetRGBAUnacceleratedStaticBitmapImage(source_buffer);
+    }
+  } else if (context_) {
+    DCHECK(IsRenderingContext2D() || IsImageBitmapRenderingContext() ||
+           IsWebGPU());
+    image_bitmap = context_->GetImage();
+  }
+
+  if (!image_bitmap) {
+    image_bitmap = CreateTransparentImage();
+  }
+
+  return image_bitmap;
+}
+
+String HTMLCanvasElement::ToDataURLInternal(
+    const String& mime_type,
+    const double& quality,
+    SourceDrawingBuffer source_buffer) const {
+  base::TimeTicks start_time = base::TimeTicks::Now();
+  if (!IsPaintable())
+    return String("data:,");
+
+  ImageEncodingMimeType encoding_mime_type =
+      ImageEncoderUtils::ToEncodingMimeType(
+          mime_type, ImageEncoderUtils::kEncodeReasonToDataURL);
+
+
+--- html_canvas_element.cc | dong 1294 ---
+PATH: third_party\blink\renderer\core\html\canvas\html_canvas_element.cc
+}
+
+String HTMLCanvasElement::ToDataURLInternal(
+    const String& mime_type,
+    const double& quality,
+    SourceDrawingBuffer source_buffer) const {
+  base::TimeTicks start_time = base::TimeTicks::Now();
+  if (!IsPaintable())
+    return String("data:,");
+
+  ImageEncodingMimeType encoding_mime_type =
+      ImageEncoderUtils::ToEncodingMimeType(
+          mime_type, ImageEncoderUtils::kEncodeReasonToDataURL);
+
+  scoped_refptr<StaticBitmapImage> image_bitmap = Snapshot(source_buffer);
+  if (image_bitmap) {
+    std::unique_ptr<ImageDataBuffer> data_buffer =
+        ImageDataBuffer::Create(image_bitmap);
+    if (!data_buffer)
+      return String("data:,");
+
+    String data_url = data_buffer->ToDataURL(encoding_mime_type, quality);
+    base::TimeDelta elapsed_time = base::TimeTicks::Now() - start_time;
+    float sqrt_pixels =
+        std::sqrt(image_bitmap->width()) * std::sqrt(image_bitmap->height());
+    float scaled_time_float = elapsed_time.InMicrosecondsF() /
+                              (sqrt_pixels == 0 ? 1.0f : sqrt_pixels);
+
+    // If scaled_time_float overflows as integer, CheckedNumeric will store it
+    // as invalid, then ValueOrDefault will return the maximum int.
+    base::CheckedNumeric<int> checked_scaled_time = scaled_time_float;
+    int scaled_time_int =
+        checked_scaled_time.ValueOrDefault(std::numeric_limits<int>::max());
+
+    if (encoding_mime_type == kMimeTypePng) {
+      UMA_HISTOGRAM_COUNTS_100000("Blink.Canvas.ToDataURLScaledDuration.PNG",
+                                  scaled_time_int);
+      const CanvasRenderingContext* context = RenderingContext();
+      if (context) {
+        UmaHistogramCompressionRatio(
+            "Blink.Canvas.ToDataURLCompressionRatio.PNG", data_url,
+            context->CreationAttributes(), image_bitmap->Size());
+      }
+    } else if (encoding_mime_type == kMimeTypeJpeg) {
+      UMA_HISTOGRAM_COUNTS_100000("Blink.Canvas.ToDataURLScaledDuration.JPEG",
+                                  scaled_time_int);
+    } else if (encoding_mime_type == kMimeTypeWebp) {
+
+
+--- html_canvas_element.cc | dong 1372 ---
+PATH: third_party\blink\renderer\core\html\canvas\html_canvas_element.cc
+      quality = v8_value.As<v8::Number>()->Value();
+  }
+  return ToDataURLInternal(mime_type, quality, kBackBuffer);
+}
+
+void HTMLCanvasElement::toBlob(V8BlobCallback* callback,
+                               const String& mime_type,
+                               const ScriptValue& quality_argument,
+                               ExceptionState& exception_state) {
+  if (!OriginClean()) {
+    exception_state.ThrowSecurityError("Tainted canvases may not be exported.");
+    return;
+  }
+
+  if (!GetExecutionContext())
+    return;
+
+  if (ContextHasOpenLayers(context_)) {
+    exception_state.ThrowDOMException(
+        DOMExceptionCode::kInvalidStateError,
+        "`toBlob()` cannot be called with open layers.");
+    return;
+  }
+
+  if (!IsPaintable()) {
+    // If the canvas element's bitmap has no pixels
+    GetDocument()
+        .GetTaskRunner(TaskType::kCanvasBlobSerialization)
+        ->PostTask(FROM_HERE,
+                   BindOnce(&V8BlobCallback::InvokeAndReportException,
+                            WrapPersistent(callback), nullptr, nullptr));
+    return;
+  }
+
+  base::TimeTicks start_time = base::TimeTicks::Now();
+  double quality = kUndefinedQualityValue;
+  if (!quality_argument.IsEmpty()) {
+    v8::Local<v8::Value> v8_value = quality_argument.V8Value();
+    if (v8_value->IsNumber())
+      quality = v8_value.As<v8::Number>()->Value();
+  }
+
+  ImageEncodingMimeType encoding_mime_type =
+      ImageEncoderUtils::ToEncodingMimeType(
+          mime_type, ImageEncoderUtils::kEncodeReasonToBlobCallback);
+
+  CanvasAsyncBlobCreator* async_creator = nullptr;
+
+
+============================================================
+[P1] GetFloatFrequencyData  (Audio - analyser handler)
+============================================================
+--- analyser_node.cc | dong 120 ---
 PATH: third_party\blink\renderer\modules\webaudio\analyser_node.cc
-}
 
 void AnalyserNode::getFloatFrequencyData(NotShared<DOMFloat32Array> array) {
   GetAnalyserHandler().GetFloatFrequencyData(array.Get(),
@@ -1020,12 +919,62 @@ void AnalyserNode::ReportWillBeDestroyed() {
 }  // namespace blink
 
 
-============================================================
-TIM: getByteFrequencyData  (AudioContext fingerprint)
-============================================================
---- analyser_node.cc | dong 124 ---
-PATH: third_party\blink\renderer\modules\webaudio\analyser_node.cc
+--- realtime_analyser.cc | dong 100 ---
+PATH: third_party\blink\renderer\modules\webaudio\realtime_analyser.cc
 }
+
+void RealtimeAnalyser::GetFloatFrequencyData(DOMFloat32Array* destination_array,
+                                             double current_time) {
+  DCHECK(IsMainThread());
+  DCHECK(destination_array);
+
+  if (current_time > last_analysis_time_) {
+    // Time has advanced since the last call; update the FFT data.
+    last_analysis_time_ = current_time;
+    DoFFTAnalysis();
+  }
+
+  // Convert from linear magnitude to floating-point decibels.
+  const size_t source_length = magnitude_buffer_.size();
+  const size_t len = std::min(source_length, destination_array->length());
+  if (len > 0) {
+    const float* source = magnitude_buffer_.Data();
+    float* destination = destination_array->Data();
+
+    for (unsigned i = 0; i < len; ++i) {
+      const float linear_value = UNSAFE_TODO(source[i]);
+      const double db_mag = audio_utilities::LinearToDecibels(linear_value);
+      UNSAFE_TODO(destination[i]) = static_cast<float>(db_mag);
+    }
+  }
+}
+
+void RealtimeAnalyser::GetByteFrequencyData(DOMUint8Array* destination_array,
+                                            double current_time) {
+  DCHECK(IsMainThread());
+  DCHECK(destination_array);
+
+  if (current_time > last_analysis_time_) {
+    // Time has advanced since the last call; update the FFT data.
+    last_analysis_time_ = current_time;
+    DoFFTAnalysis();
+  }
+
+  // FIXME: Is it worth caching the data so we don't have to do the conversion
+  // every time?  Perhaps not, since we expect many calls in the same
+  // rendering quantum.
+
+  // Convert from linear magnitude to unsigned-byte decibels.
+  const size_t source_length = magnitude_buffer_.size();
+  const size_t len = std::min(source_length, destination_array->length());
+  if (len > 0) {
+
+
+============================================================
+[P1] GetByteFrequencyData  (Audio - analyser handler)
+============================================================
+--- analyser_node.cc | dong 125 ---
+PATH: third_party\blink\renderer\modules\webaudio\analyser_node.cc
 
 void AnalyserNode::getByteFrequencyData(NotShared<DOMUint8Array> array) {
   GetAnalyserHandler().GetByteFrequencyData(array.Get(),
@@ -1051,12 +1000,62 @@ void AnalyserNode::ReportWillBeDestroyed() {
 }  // namespace blink
 
 
-============================================================
-TIM: getFloatTimeDomainData  (AudioContext fingerprint)
-============================================================
---- analyser_node.cc | dong 129 ---
-PATH: third_party\blink\renderer\modules\webaudio\analyser_node.cc
+--- realtime_analyser.cc | dong 126 ---
+PATH: third_party\blink\renderer\modules\webaudio\realtime_analyser.cc
 }
+
+void RealtimeAnalyser::GetByteFrequencyData(DOMUint8Array* destination_array,
+                                            double current_time) {
+  DCHECK(IsMainThread());
+  DCHECK(destination_array);
+
+  if (current_time > last_analysis_time_) {
+    // Time has advanced since the last call; update the FFT data.
+    last_analysis_time_ = current_time;
+    DoFFTAnalysis();
+  }
+
+  // FIXME: Is it worth caching the data so we don't have to do the conversion
+  // every time?  Perhaps not, since we expect many calls in the same
+  // rendering quantum.
+
+  // Convert from linear magnitude to unsigned-byte decibels.
+  const size_t source_length = magnitude_buffer_.size();
+  const size_t len = std::min(source_length, destination_array->length());
+  if (len > 0) {
+    const double range_scale_factor =
+        max_decibels_ == min_decibels_ ? 1.0
+                                       : 1.0 / (max_decibels_ - min_decibels_);
+    const double min_decibels = min_decibels_;
+
+    const float* source = magnitude_buffer_.Data();
+    unsigned char* destination = destination_array->Data();
+
+    for (unsigned i = 0; i < len; ++i) {
+      const float linear_value = UNSAFE_TODO(source[i]);
+      const double db_mag = audio_utilities::LinearToDecibels(linear_value);
+
+      // The range m_minDecibels to m_maxDecibels will be scaled to byte values
+      // from 0 to UCHAR_MAX.
+      const double scaled_value =
+          UCHAR_MAX * (db_mag - min_decibels) * range_scale_factor;
+
+      // Clip to valid range.
+      UNSAFE_TODO(destination[i]) =
+          static_cast<unsigned char>(ClampTo(scaled_value, 0, UCHAR_MAX));
+    }
+  }
+}
+
+void RealtimeAnalyser::GetFloatTimeDomainData(
+    DOMFloat32Array* destination_array) {
+
+
+============================================================
+[P1] GetFloatTimeDomainData  (Audio - analyser handler)
+============================================================
+--- analyser_node.cc | dong 130 ---
+PATH: third_party\blink\renderer\modules\webaudio\analyser_node.cc
 
 void AnalyserNode::getFloatTimeDomainData(NotShared<DOMFloat32Array> array) {
   GetAnalyserHandler().GetFloatTimeDomainData(array.Get());
@@ -1077,8 +1076,59 @@ void AnalyserNode::ReportWillBeDestroyed() {
 }  // namespace blink
 
 
+--- realtime_analyser.cc | dong 169 ---
+PATH: third_party\blink\renderer\modules\webaudio\realtime_analyser.cc
+}
+
+void RealtimeAnalyser::GetFloatTimeDomainData(
+    DOMFloat32Array* destination_array) {
+  DCHECK(IsMainThread());
+  DCHECK(destination_array);
+
+  const unsigned fft_size = FftSize();
+  const size_t len =
+      std::min(static_cast<size_t>(fft_size), destination_array->length());
+  if (len > 0) {
+    DCHECK_EQ(input_buffer_.size(), kInputBufferSize);
+    DCHECK_GT(input_buffer_.size(), fft_size);
+
+    const float* input_buffer = input_buffer_.Data();
+    float* destination = destination_array->Data();
+
+    const unsigned write_index = GetWriteIndex();
+
+    for (unsigned i = 0; i < len; ++i) {
+      // Buffer access is protected due to modulo operation.
+      float value = UNSAFE_TODO(
+          input_buffer[(i + write_index - fft_size + kInputBufferSize) %
+                       kInputBufferSize]);
+
+      UNSAFE_TODO(destination[i]) = value;
+    }
+  }
+}
+
+void RealtimeAnalyser::GetByteTimeDomainData(DOMUint8Array* destination_array) {
+  DCHECK(IsMainThread());
+  DCHECK(destination_array);
+
+  const unsigned fft_size = FftSize();
+  const size_t len =
+      std::min(static_cast<size_t>(fft_size), destination_array->length());
+  if (len > 0) {
+    DCHECK_EQ(input_buffer_.size(), kInputBufferSize);
+    DCHECK_GT(input_buffer_.size(), fft_size);
+
+    const float* input_buffer = input_buffer_.Data();
+    unsigned char* destination = destination_array->Data();
+
+    const unsigned write_index = GetWriteIndex();
+
+    for (unsigned i = 0; i < len; ++i) {
+
+
 ============================================================
-TIM: screen_width  (Screen width)
+[P1] Screen_width  (screen.width)
 ============================================================
 --- screen.cc | dong 87 ---
 PATH: third_party\blink\renderer\core\frame\screen.cc
@@ -1119,10 +1169,20 @@ int Screen::availTop() const {
   if (!DomWindow())
     return 0;
   return GetRect(/*available=*/true).y();
+}
+
+int Screen::availHeight() const {
+  if (!DomWindow())
+    return 0;
+  return GetRect(/*available=*/true).height();
+}
+
+int Screen::availWidth() const {
+  if (!DomWindow())
 
 
 ============================================================
-TIM: screen_height  (Screen height)
+[P1] Screen_height  (screen.height)
 ============================================================
 --- screen.cc | dong 81 ---
 PATH: third_party\blink\renderer\core\frame\screen.cc
@@ -1163,10 +1223,20 @@ int Screen::availLeft() const {
   if (!DomWindow())
     return 0;
   return GetRect(/*available=*/true).x();
+}
+
+int Screen::availTop() const {
+  if (!DomWindow())
+    return 0;
+  return GetRect(/*available=*/true).y();
+}
+
+int Screen::availHeight() const {
+  if (!DomWindow())
 
 
 ============================================================
-TIM: screen_availWidth  (Screen availWidth)
+[P1] Screen_availWidth  (screen.availWidth)
 ============================================================
 --- screen.cc | dong 130 ---
 PATH: third_party\blink\renderer\core\frame\screen.cc
@@ -1207,92 +1277,20 @@ bool Screen::isExtended() const {
 
 gfx::Rect Screen::GetRect(bool available) const {
   if (!DomWindow())
+    return gfx::Rect();
+  LocalFrame* frame = DomWindow()->GetFrame();
+  const display::ScreenInfo& screen_info = GetScreenInfo();
+  gfx::Rect rect = available ? screen_info.available_rect : screen_info.rect;
+  if (frame->GetSettings()->GetReportScreenSizeInPhysicalPixelsQuirk())
+    return gfx::ScaleToRoundedRect(rect, screen_info.device_scale_factor);
+  return rect;
+}
 
-
---- html_fenced_frame_element.cc | dong 629 ---
-PATH: third_party\blink\renderer\core\html\fenced_frame\html_fenced_frame_element.cc
-  Document& document = GetDocument();
-  int width_for_scaling = document.domWindow() && document.domWindow()->screen()
-                              ? document.domWindow()->screen()->availWidth()
-                              : 0;
-
-  // If scaling based on screen width is allowed, check for exact matches
-  // with the list of heights and aspect ratios.
-  if (width_for_scaling > 0) {
-    static_assert(kAllowedAdHeights.size() > 0UL);
-    for (const int allowed_height : kAllowedAdHeights) {
-      if (SizeMatchesExactly(requested_size,
-                             {width_for_scaling, allowed_height})) {
-        return requested_size;
-      }
-    }
-
-    static_assert(kAllowedAdAspectRatios.size() > 0UL);
-    for (const gfx::Size& allowed_aspect_ratio : kAllowedAdAspectRatios) {
-      if (SizeMatchesExactly(
-              requested_size,
-              {width_for_scaling,
-               (width_for_scaling * allowed_aspect_ratio.height()) /
-                   allowed_aspect_ratio.width()})) {
-        return requested_size;
-      }
-    }
-  }
-#endif
-
-  // If the requested size isn't allowed, we will freeze the inner frame
-  // element with the nearest available size (the best fit according to our
-  // size loss function).
-  GetDocument().AddConsoleMessage(MakeGarbageCollected<ConsoleMessage>(
-      mojom::blink::ConsoleMessageSource::kRendering,
-      mojom::blink::ConsoleMessageLevel::kWarning,
-      "A fenced frame in opaque-ads mode attempted to load with an "
-      "unsupported size, and was therefore rounded to the nearest supported "
-
-
---- html_fenced_frame_element_test.cc | dong 119 ---
-PATH: third_party\blink\renderer\core\html\fenced_frame\html_fenced_frame_element_test.cc
-  };
-
-  int screen_width = GetDocument().domWindow()->screen()->availWidth();
-
-  std::vector<PhysicalSize> test_cases = {
-      {-1, -1},
-      {0, 0},
-      {0, 100},
-      {100, 0},
-      {100, 100},
-      {321, 51},
-      {INT_MIN, INT_MIN},
-      {INT_MIN / 2, INT_MIN / 2},
-      {INT_MAX, INT_MAX},
-      {INT_MAX / 2, INT_MAX / 2},
-      {screen_width, 0},
-      {screen_width, 50},
-      {screen_width, 500},
-      {screen_width + 10, 0},
-      {screen_width + 10, 50},
-      {screen_width + 10, 500},
-      PhysicalSize(LayoutUnit(320.4), LayoutUnit(50.4)),
-      PhysicalSize(LayoutUnit(320.6), LayoutUnit(50.6)),
-      PhysicalSize(LayoutUnit(std::numeric_limits<double>::infinity()),
-                   LayoutUnit(std::numeric_limits<double>::infinity())),
-      PhysicalSize(LayoutUnit(std::numeric_limits<double>::quiet_NaN()),
-                   LayoutUnit(std::numeric_limits<double>::quiet_NaN())),
-      PhysicalSize(LayoutUnit(std::numeric_limits<double>::signaling_NaN()),
-                   LayoutUnit(std::numeric_limits<double>::signaling_NaN())),
-      PhysicalSize(LayoutUnit(std::numeric_limits<double>::denorm_min()),
-                   LayoutUnit(std::numeric_limits<double>::denorm_min())),
-  };
-
-  int expected_coercion_count = 0;
-
-  for (const PhysicalSize& requested_size : test_cases) {
-    const PhysicalSize coerced_size =
+const display::ScreenInfo& Screen::GetScreenInfo() const {
 
 
 ============================================================
-TIM: screen_availHeight  (Screen availHeight)
+[P1] Screen_availHeight  (screen.availHeight)
 ============================================================
 --- screen.cc | dong 124 ---
 PATH: third_party\blink\renderer\core\frame\screen.cc
@@ -1334,9 +1332,19 @@ bool Screen::isExtended() const {
     return false;
   }
 
+  return GetScreenInfo().is_extended;
+}
+
+gfx::Rect Screen::GetRect(bool available) const {
+  if (!DomWindow())
+    return gfx::Rect();
+  LocalFrame* frame = DomWindow()->GetFrame();
+  const display::ScreenInfo& screen_info = GetScreenInfo();
+  gfx::Rect rect = available ? screen_info.available_rect : screen_info.rect;
+
 
 ============================================================
-TIM: screen_colorDepth  (Screen colorDepth)
+[P1] Screen_colorDepth  (screen.colorDepth)
 ============================================================
 --- screen.cc | dong 93 ---
 PATH: third_party\blink\renderer\core\frame\screen.cc
@@ -1377,31 +1385,6 @@ int Screen::availHeight() const {
   if (!DomWindow())
     return 0;
   return GetRect(/*available=*/true).height();
-
-
---- screen.cc | dong 109 ---
-PATH: third_party\blink\renderer\core\frame\screen.cc
-
-unsigned Screen::pixelDepth() const {
-  return colorDepth();
-}
-
-int Screen::availLeft() const {
-  if (!DomWindow())
-    return 0;
-  return GetRect(/*available=*/true).x();
-}
-
-int Screen::availTop() const {
-  if (!DomWindow())
-    return 0;
-  return GetRect(/*available=*/true).y();
-}
-
-int Screen::availHeight() const {
-  if (!DomWindow())
-    return 0;
-  return GetRect(/*available=*/true).height();
 }
 
 int Screen::availWidth() const {
@@ -1412,58 +1395,11 @@ int Screen::availWidth() const {
 
 void Screen::Trace(Visitor* visitor) const {
   EventTarget::Trace(visitor);
-  ExecutionContextClient::Trace(visitor);
-  Supplementable<Screen>::Trace(visitor);
-}
-
-const AtomicString& Screen::InterfaceName() const {
-  return event_target_names::kScreen;
 
 
 ============================================================
-TIM: platform  (navigator.platform)
+[P1] NavigatorID_platform  (navigator.platform impl)
 ============================================================
---- navigator_base.cc | dong 61 ---
-PATH: third_party\blink\renderer\core\execution_context\navigator_base.cc
-  if (!RuntimeEnabledFeatures::ReduceUserAgentAndroidVersionDeviceModelEnabled(
-          execution_context)) {
-    return NavigatorID::platform();
-  }
-#endif
-  // TODO(crbug.com/469458271): When we remove phase 6 feature flags, we can
-  // move GetReducedNavigatorPlatform logic directly to NavigatorID::platform().
-  return GetReducedNavigatorPlatform();
-}
-
-void NavigatorBase::Trace(Visitor* visitor) const {
-  ScriptWrappable::Trace(visitor);
-  NavigatorLanguage::Trace(visitor);
-  ExecutionContextClient::Trace(visitor);
-  Supplementable<NavigatorBase>::Trace(visitor);
-}
-
-unsigned int NavigatorBase::hardwareConcurrency() const {
-  unsigned int hardware_concurrency =
-      NavigatorConcurrentHardware::hardwareConcurrency();
-
-  probe::ApplyHardwareConcurrencyOverride(
-      probe::ToCoreProbeSink(GetExecutionContext()), hardware_concurrency);
-  return hardware_concurrency;
-}
-
-ExecutionContext* NavigatorBase::GetUAExecutionContext() const {
-  return GetExecutionContext();
-}
-
-UserAgentMetadata NavigatorBase::GetUserAgentMetadata() const {
-  ExecutionContext* execution_context = GetExecutionContext();
-  return execution_context ? execution_context->GetUserAgentMetadata()
-                           : blink::UserAgentMetadata();
-}
-
-}  // namespace blink
-
-
 --- navigator_id.cc | dong 61 ---
 PATH: third_party\blink\renderer\core\frame\navigator_id.cc
 }
@@ -1501,22 +1437,1212 @@ String NavigatorID::product() {
 
 
 ============================================================
-TIM: vendor  (navigator.vendor)
+[P1] NavigatorID_vendor  (navigator.vendor)
 ============================================================
 KHONG TIM THAY
 
 ============================================================
-TIM: userAgent  (navigator.userAgent)
+[P1] NavigatorID_userAgent  (navigator.userAgent)
 ============================================================
 KHONG TIM THAY
 
 ============================================================
-TIM: timezone_offset  (Date.getTimezoneOffset)
+[P2] appVersion  (navigator.appVersion)
+============================================================
+--- navigator_id.cc | dong 55 ---
+PATH: third_party\blink\renderer\core\frame\navigator_id.cc
+}
+
+String NavigatorID::appVersion() {
+  // Version is everything in the user agent string past the "Mozilla/" prefix.
+  const String& agent = userAgent();
+  return agent.Substring(agent.find('/') + 1);
+}
+
+String NavigatorID::platform() const {
+#if BUILDFLAG(IS_MAC)
+  // Match Safari and Mozilla on Mac x86.
+  return "MacIntel";
+#elif BUILDFLAG(IS_WIN)
+  // Match Safari and Mozilla on Windows.
+  return "Win32";
+#else  // Unix-like systems
+  struct utsname osname;
+  DEFINE_THREAD_SAFE_STATIC_LOCAL(ThreadSpecific<String>, platform_name, ());
+  if (platform_name->IsNull()) {
+    StringBuilder result;
+    if (uname(&osname) >= 0) {
+      result.Append(osname.sysname);
+      if (strlen(osname.machine) != 0) {
+        result.Append(" ");
+        result.Append(osname.machine);
+      }
+    }
+    *platform_name = result.ToString();
+  }
+  return *platform_name;
+#endif
+}
+
+String NavigatorID::product() {
+  return "Gecko";
+}
+
+}  // namespace blink
+
+
+============================================================
+[P1] EnumerateFonts  (Font enumeration)
 ============================================================
 KHONG TIM THAY
 
 ============================================================
-TIM: effectiveType  (navigator.connection.effectiveType)
+[P1] queryLocalFonts  (queryLocalFonts API)
+============================================================
+--- font_access.cc | dong 48 ---
+PATH: third_party\blink\renderer\modules\font_access\font_access.cc
+
+// static
+ScriptPromise<IDLSequence<FontMetadata>> FontAccess::queryLocalFonts(
+    ScriptState* script_state,
+    LocalDOMWindow& window,
+    const QueryOptions* options,
+    ExceptionState& exception_state) {
+  DCHECK(ExecutionContext::From(script_state)->IsContextThread());
+  return From(&window)->QueryLocalFontsImpl(script_state, options,
+                                            exception_state);
+}
+
+// static
+FontAccess* FontAccess::From(LocalDOMWindow* window) {
+  auto* supplement = Supplement<LocalDOMWindow>::From<FontAccess>(window);
+  if (!supplement) {
+    supplement = MakeGarbageCollected<FontAccess>(window);
+    Supplement<LocalDOMWindow>::ProvideTo(*window, supplement);
+  }
+  return supplement;
+}
+
+ScriptPromise<IDLSequence<FontMetadata>> FontAccess::QueryLocalFontsImpl(
+    ScriptState* script_state,
+    const QueryOptions* options,
+    ExceptionState& exception_state) {
+  if (!base::FeatureList::IsEnabled(blink::features::kFontAccess)) {
+    exception_state.ThrowDOMException(DOMExceptionCode::kNotSupportedError,
+                                      "Font Access feature is not supported.");
+    return ScriptPromise<IDLSequence<FontMetadata>>();
+  }
+  if (!script_state->ContextIsValid()) {
+    exception_state.ThrowDOMException(DOMExceptionCode::kInvalidStateError,
+                                      "The execution context is not valid.");
+    return ScriptPromise<IDLSequence<FontMetadata>>();
+  }
+  ExecutionContext* context = ExecutionContext::From(script_state);
+  if (!context->IsFeatureEnabled(
+          network::mojom::PermissionsPolicyFeature::kLocalFonts,
+          ReportOptions::kReportOnFailure)) {
+    exception_state.ThrowSecurityError(kFeaturePolicyBlocked);
+    return ScriptPromise<IDLSequence<FontMetadata>>();
+  }
+
+  // Connect to font access manager remote if not bound already.
+  if (!remote_.is_bound()) {
+    context->GetBrowserInterfaceBroker().GetInterface(
+
+
+============================================================
+[P2] getFontFaceSet  (FontFaceSet)
+============================================================
+KHONG TIM THAY
+
+============================================================
+[P1] RTCPeerConnection_ctor  (WebRTC constructor - IP leak point)
+============================================================
+--- rtc_peer_connection.cc | dong 620 ---
+PATH: third_party\blink\renderer\modules\peerconnection\rtc_peer_connection.cc
+}
+
+RTCPeerConnection::RTCPeerConnection(
+    ExecutionContext* context,
+    webrtc::PeerConnectionInterface::RTCConfiguration configuration,
+    bool encoded_insertable_streams,
+    ExceptionState& exception_state)
+    : ActiveScriptWrappable<RTCPeerConnection>({}),
+      ExecutionContextLifecycleObserver(context),
+      pending_local_description_(nullptr),
+      current_local_description_(nullptr),
+      pending_remote_description_(nullptr),
+      current_remote_description_(nullptr),
+      signaling_state_(
+          webrtc::PeerConnectionInterface::SignalingState::kStable),
+      ice_gathering_state_(webrtc::PeerConnectionInterface::kIceGatheringNew),
+      ice_connection_state_(webrtc::PeerConnectionInterface::kIceConnectionNew),
+      peer_connection_state_(
+          webrtc::PeerConnectionInterface::PeerConnectionState::kNew),
+      peer_handler_unregistered_(true),
+      closed_(true),
+      suppress_events_(true),
+      encoded_insertable_streams_(encoded_insertable_streams) {
+  LocalDOMWindow* window = To<LocalDOMWindow>(context);
+
+  // WebRTC peer connections are not allowed in fenced frames.
+  // Given the complex scaffolding for setting up fenced frames testing, this
+  // is tested in the following locations:
+  // * third_party/blink/web_tests/external/wpt/fenced-frame/webrtc-peer-connection.https.html
+  // * content/browser/fenced_frame/fenced_frame_browsertest.cc
+  if (RuntimeEnabledFeatures::
+          FencedFramesLocalUnpartitionedDataAccessEnabled() &&
+      window->GetFrame()->IsInFencedFrameTree()) {
+    exception_state.ThrowDOMException(
+        DOMExceptionCode::kNotAllowedError,
+        "RTCPeerConnection is not allowed in fenced frames.");
+    return;
+  }
+
+  InstanceCounters::IncrementCounter(
+      InstanceCounters::kRTCPeerConnectionCounter);
+  // If we fail, set |m_closed| and |m_stopped| to true, to avoid hitting the
+  // assert in the destructor.
+  if (InstanceCounters::CounterValue(
+          InstanceCounters::kRTCPeerConnectionCounter) > kMaxPeerConnections) {
+    exception_state.ThrowDOMException(DOMExceptionCode::kUnknownError,
+                                      "Cannot create so many PeerConnections");
+
+
+============================================================
+[P1] AddIceCandidate  (WebRTC ICE candidate)
+============================================================
+--- rtc_peer_connection.cc | dong 1497 ---
+PATH: third_party\blink\renderer\modules\peerconnection\rtc_peer_connection.cc
+}
+
+ScriptPromise<IDLUndefined> RTCPeerConnection::addIceCandidate(
+    ScriptState* script_state,
+    const RTCIceCandidateInit* candidate,
+    ExceptionState& exception_state) {
+  DCHECK(script_state->ContextIsValid());
+  if (signaling_state_ ==
+      webrtc::PeerConnectionInterface::SignalingState::kClosed) {
+    exception_state.ThrowDOMException(DOMExceptionCode::kInvalidStateError,
+                                      kSignalingStateClosedMessage);
+    return EmptyPromise();
+  }
+
+  if (candidate->hasCandidate() && candidate->candidate().empty()) {
+    // Temporary mitigation to avoid throwing an exception when candidate is
+    // empty or nothing was passed.
+    // TODO(crbug.com/978582): Remove this mitigation when the WebRTC layer
+    // handles the empty candidate field or the null candidate correctly.
+    return ToResolvedUndefinedPromise(script_state);
+  }
+
+  RTCIceCandidatePlatform* platform_candidate =
+      ConvertToRTCIceCandidatePlatform(ExecutionContext::From(script_state),
+                                       candidate);
+
+  if (IsIceCandidateMissingSdpMidAndMLineIndex(candidate)) {
+    exception_state.ThrowTypeError(
+        "Candidate missing values for both sdpMid and sdpMLineIndex");
+    return EmptyPromise();
+  }
+
+  DisableBackForwardCache(GetExecutionContext());
+
+  auto* resolver = MakeGarbageCollected<ScriptPromiseResolver<IDLUndefined>>(
+      script_state, exception_state.GetContext());
+  auto promise = resolver->Promise();
+  auto* request =
+      MakeGarbageCollected<RTCVoidRequestPromiseImpl>(this, resolver);
+  peer_handler_->AddIceCandidate(request, std::move(platform_candidate));
+  return promise;
+}
+
+ScriptPromise<IDLUndefined> RTCPeerConnection::addIceCandidate(
+    ScriptState* script_state,
+    const RTCIceCandidateInit* candidate,
+    V8VoidFunction* success_callback,
+
+
+--- rtc_peer_connection.cc | dong 1538 ---
+PATH: third_party\blink\renderer\modules\peerconnection\rtc_peer_connection.cc
+}
+
+ScriptPromise<IDLUndefined> RTCPeerConnection::addIceCandidate(
+    ScriptState* script_state,
+    const RTCIceCandidateInit* candidate,
+    V8VoidFunction* success_callback,
+    V8RTCPeerConnectionErrorCallback* error_callback,
+    ExceptionState& exception_state) {
+  DCHECK(script_state->ContextIsValid());
+  DCHECK(success_callback);
+  DCHECK(error_callback);
+
+  if (CallErrorCallbackIfSignalingStateClosed(
+          ExecutionContext::From(script_state), signaling_state_,
+          error_callback))
+    return ToResolvedUndefinedPromise(script_state);
+
+  if (IsIceCandidateMissingSdpMidAndMLineIndex(candidate)) {
+    exception_state.ThrowTypeError(
+        "Candidate missing values for both sdpMid and sdpMLineIndex");
+    return EmptyPromise();
+  }
+
+  RTCIceCandidatePlatform* platform_candidate =
+      ConvertToRTCIceCandidatePlatform(ExecutionContext::From(script_state),
+                                       candidate);
+
+  // Temporary mitigation to avoid throwing an exception when candidate is
+  // empty.
+  // TODO(crbug.com/978582): Remove this mitigation when the WebRTC layer
+  // handles the empty candidate field or the null candidate correctly.
+  if (platform_candidate->Candidate().empty())
+    return ToResolvedUndefinedPromise(script_state);
+
+  DisableBackForwardCache(GetExecutionContext());
+
+  auto* request = MakeGarbageCollected<RTCVoidRequestImpl>(
+      GetExecutionContext(), this, success_callback, error_callback);
+  peer_handler_->AddIceCandidate(request, std::move(platform_candidate));
+  return ToResolvedUndefinedPromise(script_state);
+}
+
+V8RTCSignalingState RTCPeerConnection::signalingState() const {
+  switch (signaling_state_) {
+    case webrtc::PeerConnectionInterface::SignalingState::kStable:
+      return V8RTCSignalingState(V8RTCSignalingState::Enum::kStable);
+    case webrtc::PeerConnectionInterface::SignalingState::kHaveLocalOffer:
+
+
+============================================================
+[P1] OnIceCandidate  (WebRTC ICE callback)
+============================================================
+--- rtc_peer_connection_handler.cc | dong 601 ---
+PATH: third_party\blink\renderer\modules\peerconnection\rtc_peer_connection_handler.cc
+  }
+
+  void OnIceCandidate(const IceCandidate* candidate) override {
+    DCHECK(native_peer_connection_);
+    std::string sdp = candidate->ToString();
+   DCHECK(!sdp.empty());
+    // The generated candidate may have been added to the pending or current
+    // local description, take a snapshot and surface them to the main thread.
+    // Remote descriptions are also surfaced because
+    // OnSessionDescriptionsUpdated() requires all four as arguments.
+    std::unique_ptr<webrtc::SessionDescriptionInterface>
+        pending_local_description = CopySessionDescription(
+            native_peer_connection_->pending_local_description());
+    std::unique_ptr<webrtc::SessionDescriptionInterface>
+        current_local_description = CopySessionDescription(
+            native_peer_connection_->current_local_description());
+    std::unique_ptr<webrtc::SessionDescriptionInterface>
+        pending_remote_description = CopySessionDescription(
+            native_peer_connection_->pending_remote_description());
+    std::unique_ptr<webrtc::SessionDescriptionInterface>
+        current_remote_description = CopySessionDescription(
+            native_peer_connection_->current_remote_description());
+
+    PostCrossThreadTask(
+        *main_thread_.get(), FROM_HERE,
+        CrossThreadBindOnce(
+            &RTCPeerConnectionHandler::Observer::OnIceCandidateImpl,
+            WrapCrossThreadPersistent(this), String::FromUTF8(sdp),
+            String::FromUTF8(candidate->sdp_mid()),
+            candidate->sdp_mline_index(), candidate->candidate().component(),
+            candidate->candidate().address().family(),
+            String::FromUTF8(candidate->candidate().username()),
+            String::FromUTF8(candidate->server_url()),
+            std::move(pending_local_description),
+            std::move(current_local_description),
+            std::move(pending_remote_description),
+            std::move(current_remote_description)));
+  }
+
+  void OnIceCandidateError(const std::string& address,
+                           int port,
+                           const std::string& url,
+                           int error_code,
+                           const std::string& error_text) override {
+    PostCrossThreadTask(
+        *main_thread_.get(), FROM_HERE,
+        CrossThreadBindOnce(
+
+
+--- rtc_peer_connection_handler.cc | dong 686 ---
+PATH: third_party\blink\renderer\modules\peerconnection\rtc_peer_connection_handler.cc
+    // garbage collection. Ensure that handler_ is still valid.
+    if (handler_) {
+      handler_->OnIceCandidate(sdp, sdp_mid, sdp_mline_index, component,
+                               address_family, username_fragment, url);
+    }
+  }
+
+  void OnIceCandidateErrorImpl(const String& address,
+                               int port,
+                               const String& host_candidate,
+                               const String& url,
+                               int error_code,
+                               const String& error_text) {
+    DCHECK(main_thread_->BelongsToCurrentThread());
+    if (handler_) {
+      handler_->OnIceCandidateError(
+          address,
+          port ? std::optional<uint16_t>(static_cast<uint16_t>(port))
+               : std::nullopt,
+          host_candidate, url, error_code, error_text);
+    }
+  }
+
+  void OnInterestingUsage(int usage_pattern) override {
+    PostCrossThreadTask(
+        *main_thread_.get(), FROM_HERE,
+        CrossThreadBindOnce(
+            &RTCPeerConnectionHandler::Observer::OnInterestingUsageImpl,
+            WrapCrossThreadPersistent(this), usage_pattern));
+  }
+
+  void OnInterestingUsageImpl(int usage_pattern) {
+    DCHECK(main_thread_->BelongsToCurrentThread());
+    if (handler_) {
+      handler_->OnInterestingUsage(usage_pattern);
+    }
+  }
+
+ private:
+  const base::WeakPtr<RTCPeerConnectionHandler> handler_;
+  const scoped_refptr<base::SingleThreadTaskRunner> main_thread_;
+  // The rest of the members are set at Initialize() but are otherwise constant
+  // until destruction.
+  scoped_refptr<base::SingleThreadTaskRunner> signaling_thread_;
+  // A copy of |handler_->native_peer_connection_| for use on the WebRTC
+  // signaling thread.
+  webrtc::scoped_refptr<webrtc::PeerConnectionInterface>
+
+
+--- rtc_peer_connection_handler.cc | dong 2037 ---
+PATH: third_party\blink\renderer\modules\peerconnection\rtc_peer_connection_handler.cc
+}
+
+void RTCPeerConnectionHandler::OnIceCandidate(const String& sdp,
+                                              const String& sdp_mid,
+                                              int sdp_mline_index,
+                                              int component,
+                                              int address_family,
+                                              const String& usernameFragment,
+                                              const String& url) {
+  DCHECK(task_runner_->RunsTasksInCurrentSequence());
+  // In order to ensure that the RTCPeerConnection is not garbage collected
+  // from under the function, we keep a pointer to it on the stack.
+  auto* client_on_stack = client_.Get();
+  if (!client_on_stack) {
+    return;
+  }
+  TRACE_EVENT0("webrtc", "RTCPeerConnectionHandler::OnIceCandidateImpl");
+  // This line can cause garbage collection.
+  auto* platform_candidate = MakeGarbageCollected<RTCIceCandidatePlatform>(
+      sdp, sdp_mid, sdp_mline_index, usernameFragment, url);
+  if (peer_connection_tracker_) {
+    peer_connection_tracker_->TrackAddIceCandidate(
+        this, platform_candidate, PeerConnectionTracker::kSourceLocal, true);
+  }
+
+  if (!is_closed_ && client_on_stack) {
+    client_on_stack->DidGenerateICECandidate(platform_candidate);
+  }
+}
+
+void RTCPeerConnectionHandler::OnIceCandidateError(const String& address,
+                                                   std::optional<uint16_t> port,
+                                                   const String& host_candidate,
+                                                   const String& url,
+                                                   int error_code,
+                                                   const String& error_text) {
+  DCHECK(task_runner_->RunsTasksInCurrentSequence());
+  TRACE_EVENT0("webrtc", "RTCPeerConnectionHandler::OnIceCandidateError");
+  if (peer_connection_tracker_) {
+    peer_connection_tracker_->TrackIceCandidateError(
+        this, address, port, host_candidate, url, error_code, error_text);
+  }
+  if (!is_closed_) {
+    client_->DidFailICECandidate(address, port, host_candidate, url, error_code,
+                                 error_text);
+  }
+}
+
+
+--- rtc_peer_connection_handler_test.cc | dong 634 ---
+PATH: third_party\blink\renderer\modules\peerconnection\rtc_peer_connection_handler_test.cc
+  std::unique_ptr<webrtc::IceCandidate> native_candidate(
+      mock_dependency_factory_->CreateIceCandidate("sdpMid", 1, kDummySdp));
+  pc_handler_->observer()->OnIceCandidate(native_candidate.get());
+
+  EXPECT_CALL(*mock_client_.Get(), DidChangeIceGatheringState(_)).Times(0);
+  pc_handler_->observer()->OnIceGatheringChange(
+      webrtc::PeerConnectionInterface::kIceGatheringNew);
+
+  EXPECT_CALL(*mock_client_.Get(), DidModifyTransceiversForMock(_, _, _))
+      .Times(0);
+  webrtc::scoped_refptr<webrtc::MediaStreamInterface> remote_stream(
+      AddRemoteMockMediaStream("remote_stream", "video", "audio"));
+  InvokeOnAddStream(remote_stream);
+
+  EXPECT_CALL(*mock_client_.Get(), DidModifyTransceiversForMock(_, _, _))
+      .Times(0);
+  InvokeOnRemoveStream(remote_stream);
+
+  EXPECT_CALL(*mock_client_.Get(), DidAddRemoteDataChannel(_)).Times(0);
+  webrtc::DataChannelInit config;
+  webrtc::scoped_refptr<webrtc::DataChannelInterface> remote_data_channel(
+      new webrtc::RefCountedObject<blink::MockDataChannel>("dummy", &config));
+  pc_handler_->observer()->OnDataChannel(remote_data_channel);
+
+  RunMessageLoopsUntilIdle();
+}
+
+TEST_F(RTCPeerConnectionHandlerTest, CreateOffer) {
+  EXPECT_CALL(*mock_tracker_.Get(), TrackCreateOffer(pc_handler_.get(), _));
+
+  // TODO(perkj): Can blink::RTCSessionDescriptionRequest be changed so
+  // the |request| requestSucceeded can be tested? Currently the |request|
+  // object can not be initialized from a unit test.
+  EXPECT_FALSE(mock_peer_connection_->created_session_description());
+  pc_handler_->CreateOffer(nullptr /*RTCSessionDescriptionRequest*/, nullptr);
+  EXPECT_TRUE(mock_peer_connection_->created_session_description());
+}
+
+TEST_F(RTCPeerConnectionHandlerTest, CreateAnswer) {
+  EXPECT_CALL(*mock_tracker_.Get(), TrackCreateAnswer(pc_handler_.get(), _));
+  // TODO(perkj): Can blink::RTCSessionDescriptionRequest be changed so
+  // the |request| requestSucceeded can be tested? Currently the |request|
+  // object can not be initialized from a unit test.
+  EXPECT_FALSE(mock_peer_connection_->created_session_description());
+  pc_handler_->CreateAnswer(nullptr /*RTCSessionDescriptionRequest*/, nullptr);
+  EXPECT_TRUE(mock_peer_connection_->created_session_description());
+}
+
+
+--- rtc_peer_connection_handler_test.cc | dong 987 ---
+PATH: third_party\blink\renderer\modules\peerconnection\rtc_peer_connection_handler_test.cc
+  std::unique_ptr<webrtc::IceCandidate> native_candidate(
+      mock_dependency_factory_->CreateIceCandidate("sdpMid", 1, kDummySdp));
+  pc_handler_->observer()->OnIceCandidate(native_candidate.get());
+  RunMessageLoopsUntilIdle();
+  EXPECT_EQ("sdpMid", mock_client_->candidate_mid());
+  EXPECT_EQ(1, mock_client_->candidate_mlineindex());
+  EXPECT_EQ(kDummySdp, mock_client_->candidate_sdp());
+}
+
+TEST_F(RTCPeerConnectionHandlerTest, OnRenegotiationNeeded) {
+  testing::InSequence sequence;
+  EXPECT_CALL(*mock_peer_connection_, ShouldFireNegotiationNeededEvent)
+      .WillOnce(Return(true));
+  EXPECT_CALL(*mock_tracker_.Get(),
+              TrackOnRenegotiationNeeded(pc_handler_.get()));
+  EXPECT_CALL(*mock_client_.Get(), NegotiationNeeded());
+  pc_handler_->observer()->OnNegotiationNeededEvent(42);
+}
+
+TEST_F(RTCPeerConnectionHandlerTest, CreateDataChannel) {
+  blink::WebString label = "d1";
+  EXPECT_CALL(*mock_tracker_.Get(),
+              TrackCreateDataChannel(pc_handler_.get(), testing::NotNull(),
+                                     PeerConnectionTracker::kSourceLocal));
+  webrtc::scoped_refptr<webrtc::DataChannelInterface> channel =
+      pc_handler_->CreateDataChannel("d1", webrtc::DataChannelInit());
+  EXPECT_TRUE(channel.get());
+  EXPECT_EQ(label.Utf8(), channel->label());
+}
+
+TEST_F(RTCPeerConnectionHandlerTest, CheckInsertableStreamsConfig) {
+  for (bool encoded_insertable_streams : {true, false}) {
+    auto handler = std::make_unique<RTCPeerConnectionHandlerUnderTest>(
+        mock_client_.Get(), mock_dependency_factory_.Get(),
+        encoded_insertable_streams);
+    EXPECT_EQ(handler->encoded_insertable_streams(),
+              encoded_insertable_streams);
+  }
+}
+
+TEST_F(RTCPeerConnectionHandlerTest, ThermalResourceDefaultValue) {
+  EXPECT_TRUE(mock_peer_connection_->adaptation_resources().empty());
+  pc_handler_->OnThermalStateChange(
+      mojom::blink::DeviceThermalState::kCritical);
+#if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_CHROMEOS)
+  bool expect_disabled = false;
+#else
+
+
+--- rtc_peer_connection_handler_test.cc | dong 1159 ---
+PATH: third_party\blink\renderer\modules\peerconnection\rtc_peer_connection_handler_test.cc
+      mock_dependency_factory_->CreateIceCandidate("sdpMid", 1, kDummySdp));
+  pc_handler_.reset();
+  observer->OnIceCandidate(native_candidate.get());
+}
+
+TEST_F(RTCPeerConnectionHandlerTest,
+       CandidatesIgnoredWheHandlerDeletedFromEvent) {
+  auto* observer = pc_handler_->observer();
+  std::unique_ptr<webrtc::IceCandidate> native_candidate(
+      mock_dependency_factory_->CreateIceCandidate("sdpMid", 1, kDummySdp));
+  EXPECT_CALL(*mock_client_, DidChangeSessionDescriptions(_, _, _, _))
+      .WillOnce([&] { pc_handler_.reset(); });
+  observer->OnIceCandidate(native_candidate.get());
+}
+
+TEST_F(RTCPeerConnectionHandlerTest,
+       OnIceCandidateAfterClientGarbageCollectionDoesNothing) {
+  testing::InSequence sequence;
+  EXPECT_CALL(*mock_tracker_.Get(),
+              TrackAddIceCandidate(pc_handler_.get(), _,
+                                   PeerConnectionTracker::kSourceLocal, true))
+      .Times(0);
+
+  std::unique_ptr<webrtc::IceCandidate> native_candidate(
+      mock_dependency_factory_->CreateIceCandidate("sdpMid", 1, kDummySdp));
+  mock_client_ = nullptr;
+  WebHeap::CollectAllGarbageForTesting();
+  pc_handler_->observer()->OnIceCandidate(native_candidate.get());
+  RunMessageLoopsUntilIdle();
+}
+
+TEST_F(RTCPeerConnectionHandlerTest,
+       OnIceCandidateAfterClientGarbageCollectionFails) {
+  DummyExceptionStateForTesting exception_state;
+  auto pc_handler = CreateRTCPeerConnectionHandlerUnderTest();
+  mock_client_ = nullptr;
+  WebHeap::CollectAllGarbageForTesting();
+  EXPECT_FALSE(pc_handler->Initialize(
+      /*context=*/nullptr, webrtc::PeerConnectionInterface::RTCConfiguration(),
+      /*frame=*/nullptr, exception_state));
+}
+
+}  // namespace blink
+
+
+--- rtc_peer_connection_handler_test.cc | dong 1169 ---
+PATH: third_party\blink\renderer\modules\peerconnection\rtc_peer_connection_handler_test.cc
+  EXPECT_CALL(*mock_client_, DidChangeSessionDescriptions(_, _, _, _))
+      .WillOnce([&] { pc_handler_.reset(); });
+  observer->OnIceCandidate(native_candidate.get());
+}
+
+TEST_F(RTCPeerConnectionHandlerTest,
+       OnIceCandidateAfterClientGarbageCollectionDoesNothing) {
+  testing::InSequence sequence;
+  EXPECT_CALL(*mock_tracker_.Get(),
+              TrackAddIceCandidate(pc_handler_.get(), _,
+                                   PeerConnectionTracker::kSourceLocal, true))
+      .Times(0);
+
+  std::unique_ptr<webrtc::IceCandidate> native_candidate(
+      mock_dependency_factory_->CreateIceCandidate("sdpMid", 1, kDummySdp));
+  mock_client_ = nullptr;
+  WebHeap::CollectAllGarbageForTesting();
+  pc_handler_->observer()->OnIceCandidate(native_candidate.get());
+  RunMessageLoopsUntilIdle();
+}
+
+TEST_F(RTCPeerConnectionHandlerTest,
+       OnIceCandidateAfterClientGarbageCollectionFails) {
+  DummyExceptionStateForTesting exception_state;
+  auto pc_handler = CreateRTCPeerConnectionHandlerUnderTest();
+  mock_client_ = nullptr;
+  WebHeap::CollectAllGarbageForTesting();
+  EXPECT_FALSE(pc_handler->Initialize(
+      /*context=*/nullptr, webrtc::PeerConnectionInterface::RTCConfiguration(),
+      /*frame=*/nullptr, exception_state));
+}
+
+}  // namespace blink
+
+
+--- rtc_peer_connection_handler_test.cc | dong 1184 ---
+PATH: third_party\blink\renderer\modules\peerconnection\rtc_peer_connection_handler_test.cc
+  mock_client_ = nullptr;
+  WebHeap::CollectAllGarbageForTesting();
+  pc_handler_->observer()->OnIceCandidate(native_candidate.get());
+  RunMessageLoopsUntilIdle();
+}
+
+TEST_F(RTCPeerConnectionHandlerTest,
+       OnIceCandidateAfterClientGarbageCollectionFails) {
+  DummyExceptionStateForTesting exception_state;
+  auto pc_handler = CreateRTCPeerConnectionHandlerUnderTest();
+  mock_client_ = nullptr;
+  WebHeap::CollectAllGarbageForTesting();
+  EXPECT_FALSE(pc_handler->Initialize(
+      /*context=*/nullptr, webrtc::PeerConnectionInterface::RTCConfiguration(),
+      /*frame=*/nullptr, exception_state));
+}
+
+}  // namespace blink
+
+
+============================================================
+[P2] getBoundingClientRect  (ClientRects fingerprint)
+============================================================
+--- caret_position.cc | dong 41 ---
+PATH: third_party\blink\renderer\core\css\cssom\caret_position.cc
+  auto* range_object = MakeGarbageCollected<Range>(node_->GetDocument(), node_,
+                                                   offset_, node_, offset_);
+  return range_object->getBoundingClientRect();
+}
+
+void CaretPosition::Trace(Visitor* visitor) const {
+  visitor->Trace(node_);
+  ScriptWrappable::Trace(visitor);
+}
+
+}  // namespace blink
+
+
+--- caret_position_test.cc | dong 94 ---
+PATH: third_party\blink\renderer\core\css\cssom\caret_position_test.cc
+  range->setStart(s0, 1);
+  range->setEnd(s0, 1);
+  auto* range_client_rect = range->getBoundingClientRect();
+  auto* caret_position_client_rect = caret_position->getClientRect();
+  EXPECT_NE(nullptr, range_client_rect);
+  EXPECT_NE(nullptr, caret_position_client_rect);
+  EXPECT_EQ(*range_client_rect, *caret_position_client_rect);
+}
+
+TEST_F(CaretPositionTest, getClientRectInInput) {
+  SetBodyContent("<input value='text inside input'>");
+  const auto& input =
+      ToTextControl(*GetDocument().QuerySelector(AtomicString("input")));
+  Node* text_inside_input = input.InnerEditorElement()->firstChild();
+
+  auto* caret_position =
+      MakeGarbageCollected<CaretPosition>(text_inside_input, 6);
+  EXPECT_EQ(&input, caret_position->offsetNode());
+  EXPECT_EQ(6u, caret_position->offset());
+  auto* range = Range::Create(text_inside_input->GetDocument());
+  range->setStart(text_inside_input, 6);
+  range->setEnd(text_inside_input, 6);
+  auto* range_client_rect = range->getBoundingClientRect();
+  auto* caret_position_client_rect = caret_position->getClientRect();
+  EXPECT_NE(nullptr, range_client_rect);
+  EXPECT_NE(nullptr, caret_position_client_rect);
+  EXPECT_EQ(*range_client_rect, *caret_position_client_rect);
+}
+}  // namespace blink
+
+
+--- caret_position_test.cc | dong 114 ---
+PATH: third_party\blink\renderer\core\css\cssom\caret_position_test.cc
+  range->setStart(text_inside_input, 6);
+  range->setEnd(text_inside_input, 6);
+  auto* range_client_rect = range->getBoundingClientRect();
+  auto* caret_position_client_rect = caret_position->getClientRect();
+  EXPECT_NE(nullptr, range_client_rect);
+  EXPECT_NE(nullptr, caret_position_client_rect);
+  EXPECT_EQ(*range_client_rect, *caret_position_client_rect);
+}
+}  // namespace blink
+
+
+--- form_control_range.cc | dong 208 ---
+PATH: third_party\blink\renderer\core\dom\form_control_range.cc
+}
+
+DOMRect* FormControlRange::getBoundingClientRect() const {
+  Range* range = BuildValueGeometryContext();
+  if (!range) {
+    return DOMRect::Create();
+  }
+  return range->getBoundingClientRect();
+}
+
+Range* FormControlRange::BuildValueGeometryContext() const {
+  if (!form_control_ || !form_control_->isConnected()) {
+    return nullptr;
+  }
+
+  Document& doc = form_control_->GetDocument();
+  doc.UpdateStyleAndLayout(DocumentUpdateReason::kJavaScript);
+
+  if (!form_control_->GetLayoutObject()) {
+    return nullptr;
+  }
+
+  Element* inner = form_control_->InnerEditorElement();
+  if (!inner) {
+    return nullptr;
+  }
+
+  Text* text_node = nullptr;
+  // `.value` is copied into shadow-DOM text nodes under the inner editor, but
+  // there is no accessor yet. Iterate the children to locate that copy. The
+  // first text node is returned for now.
+  // TODO: Aggregate copied text when it spans multiple nodes.
+  for (Node* n = inner->firstChild(); n; n = n->nextSibling()) {
+    if (auto* t = DynamicTo<Text>(n)) {
+      text_node = t;
+      break;
+    }
+  }
+  if (!text_node) {
+    return nullptr;
+  }
+
+  const unsigned len = text_node->data().length();
+  const unsigned start = std::min(start_offset_in_value_, len);
+  const unsigned end = std::min(end_offset_in_value_, len);
+
+  Range* range = Range::Create(doc);
+
+
+--- form_control_range.cc | dong 213 ---
+PATH: third_party\blink\renderer\core\dom\form_control_range.cc
+    return DOMRect::Create();
+  }
+  return range->getBoundingClientRect();
+}
+
+Range* FormControlRange::BuildValueGeometryContext() const {
+  if (!form_control_ || !form_control_->isConnected()) {
+    return nullptr;
+  }
+
+  Document& doc = form_control_->GetDocument();
+  doc.UpdateStyleAndLayout(DocumentUpdateReason::kJavaScript);
+
+  if (!form_control_->GetLayoutObject()) {
+    return nullptr;
+  }
+
+  Element* inner = form_control_->InnerEditorElement();
+  if (!inner) {
+    return nullptr;
+  }
+
+  Text* text_node = nullptr;
+  // `.value` is copied into shadow-DOM text nodes under the inner editor, but
+  // there is no accessor yet. Iterate the children to locate that copy. The
+  // first text node is returned for now.
+  // TODO: Aggregate copied text when it spans multiple nodes.
+  for (Node* n = inner->firstChild(); n; n = n->nextSibling()) {
+    if (auto* t = DynamicTo<Text>(n)) {
+      text_node = t;
+      break;
+    }
+  }
+  if (!text_node) {
+    return nullptr;
+  }
+
+  const unsigned len = text_node->data().length();
+  const unsigned start = std::min(start_offset_in_value_, len);
+  const unsigned end = std::min(end_offset_in_value_, len);
+
+  Range* range = Range::Create(doc);
+  range->setStart(Position(text_node, start));
+  range->setEnd(Position(text_node, end));
+  return range;
+}
+
+
+
+--- range.cc | dong 1662 ---
+PATH: third_party\blink\renderer\core\dom\range.cc
+}
+
+DOMRect* Range::getBoundingClientRect() const {
+  // TODO(crbug.com/1499981): This should be removed once synchronized scrolling
+  // impact is understood.
+  SyncScrollAttemptHeuristic::DidAccessScrollOffset();
+  return DOMRect::FromRectF(BoundingRect());
+}
+
+// TODO(editing-dev): We should make
+// |Document::AdjustQuadsForScrollAndAbsoluteZoom()| as const function
+// and takes |const LayoutObject&|.
+static Vector<gfx::QuadF> ComputeTextQuads(const Document& owner_document,
+                                           const LayoutText& layout_text,
+                                           unsigned start_offset,
+                                           unsigned end_offset) {
+  Vector<gfx::QuadF> text_quads;
+  layout_text.AbsoluteQuadsForRange(text_quads, start_offset, end_offset);
+  const_cast<Document&>(owner_document)
+      .AdjustQuadsForScrollAndAbsoluteZoom(
+          text_quads, const_cast<LayoutText&>(layout_text));
+  return text_quads;
+}
+
+// https://www.w3.org/TR/cssom-view-1/#dom-range-getclientrects
+void Range::GetBorderAndTextQuads(Vector<gfx::QuadF>& quads) const {
+  Node* start_container = &start_.Container();
+  Node* end_container = &end_.Container();
+  Node* stop_node = PastLastNode();
+
+  // Stores the elements selected by the range.
+  HeapHashSet<Member<const Node>> selected_elements;
+  for (Node* node = FirstNode(); node && node != stop_node;
+       node = NodeTraversal::Next(*node)) {
+    if (!node->IsElementNode())
+      continue;
+    auto* parent_node = node->parentNode();
+    if ((parent_node && selected_elements.Contains(parent_node)) ||
+        (!node->contains(start_container) && !node->contains(end_container))) {
+      DCHECK_LE(StartPosition(), Position::BeforeNode(*node));
+      DCHECK_GE(EndPosition(), Position::AfterNode(*node));
+      selected_elements.insert(node);
+    }
+  }
+
+  for (const Node* node = FirstNode(); node && node != stop_node;
+       node = NodeTraversal::Next(*node)) {
+
+
+--- html_permission_element_test.cc | dong 2023 ---
+PATH: third_party\blink\renderer\core\html\html_permission_element_test.cc
+      "  var camera = document.getElementById('camera');\n"
+      "  camera.style.width = '10px';\n"
+      "  camera.getBoundingClientRect();\n"
+      "  camera.style.width = '40px';\n"
+      "\n"
+      "});\n")
+      ->RunScript(&Window());
+  Compositor().BeginFrame();
+  GetDocument().View()->UpdateAllLifecyclePhasesForTest();
+  EXPECT_FALSE(permission_element->IsClickingEnabled());
+  DeferredChecker checker(permission_element);
+  checker.CheckClickingEnabledAfterDelay(kDefaultTimeout,
+                                         /*expected_enabled*/ true);
+}
+
+}  // namespace blink
+
+
+--- frame_throttling_test.cc | dong 1275 ---
+PATH: third_party\blink\renderer\core\scheduler_integration_tests\frame_throttling_test.cc
+      "  throttledFrame.document.documentElement.style = 'margin: 50px';\n"
+      "  "
+      "throttledFrame.document.querySelector('#d').getBoundingClientRect();"
+      "\n"
+      "});\n")
+      ->RunScript(To<LocalDOMWindow>(second_frame_element->contentWindow()));
+  CompositeFrame();
+}
+
+TEST_P(FrameThrottlingTest, AllowOneAnimationFrame) {
+  WebView().GetSettings()->SetJavaScriptEnabled(true);
+
+  // Prepare a page with two cross origin frames (from the same origin so they
+  // are able to access eachother).
+  SimRequest main_resource("https://example.com/", "text/html");
+  SimRequest frame_resource("https://thirdparty.com/frame.html", "text/html");
+  LoadURL("https://example.com/");
+  main_resource.Complete(
+      "<iframe id=frame style=\"position: fixed; top: -10000px\" "
+      "src='https://thirdparty.com/frame.html'></iframe>");
+
+  frame_resource.Complete(R"HTML(
+    <script>
+    window.requestAnimationFrame(() => { window.didRaf = true; });
+    </script>
+  )HTML");
+
+  auto* frame_element = To<HTMLIFrameElement>(
+      GetDocument().getElementById(AtomicString("frame")));
+  CompositeFrame();
+  EXPECT_TRUE(frame_element->contentDocument()->View()->CanThrottleRendering());
+
+  v8::HandleScope scope(Window().GetIsolate());
+  v8::Local<v8::Value> result =
+      ClassicScript::CreateUnspecifiedScript("window.didRaf;")
+          ->RunScriptAndReturnValue(
+              To<LocalDOMWindow>(frame_element->contentWindow()))
+          .GetSuccessValueOrEmpty();
+  EXPECT_TRUE(result->IsTrue());
+}
+
+TEST_P(FrameThrottlingTest, UpdatePaintPropertiesOnUnthrottling) {
+  SimRequest main_resource("https://example.com/", "text/html");
+  SimRequest frame_resource("https://example.com/iframe.html", "text/html");
+
+  LoadURL("https://example.com/");
+  main_resource.Complete("<iframe id=frame sandbox src=iframe.html></iframe>");
+
+
+============================================================
+[P2] getClientRects  (ClientRects list)
+============================================================
+--- element.cc | dong 3415 ---
+PATH: third_party\blink\renderer\core\dom\element.cc
+}
+
+DOMRectList* Element::getClientRects() {
+  Vector<gfx::RectF> rects = GetClientRectsNoAdjustment();
+  if (rects.empty()) {
+    return MakeGarbageCollected<DOMRectList>();
+  }
+  LayoutObject* element_layout_object = GetLayoutObject();
+  DCHECK(element_layout_object);
+  for (auto& rect : rects) {
+    GetDocument().AdjustRectForScrollAndAbsoluteZoom(rect,
+                                                     *element_layout_object);
+  }
+  return MakeGarbageCollected<DOMRectList>(rects);
+}
+
+Vector<gfx::RectF> Element::GetClientRectsNoAdjustment() {
+  // TODO(crbug.com/1499981): This should be removed once synchronized scrolling
+  // impact is understood.
+  SyncScrollAttemptHeuristic::DidAccessScrollOffset();
+  GetDocument().EnsurePaintLocationDataValidForNode(
+      this, DocumentUpdateReason::kJavaScript);
+
+  Vector<gfx::QuadF> quads;
+  ClientQuads(quads);
+  if (quads.empty()) {
+    return {};
+  }
+  Vector<gfx::RectF> result;
+  for (auto& quad : quads) {
+    result.emplace_back(quad.BoundingBox());
+  }
+  return result;
+}
+
+gfx::RectF Element::GetBoundingClientRectNoLifecycleUpdateNoAdjustment() const {
+  Vector<gfx::QuadF> quads;
+  ClientQuads(quads);
+  if (quads.empty()) {
+    return gfx::RectF();
+  }
+
+  gfx::RectF result;
+  for (auto& quad : quads) {
+    result.Union(quad.BoundingBox());
+  }
+  return result;
+
+
+============================================================
+[P2] getVoices  (Speech voices list)
+============================================================
+--- speech_synthesis.cc | dong 98 ---
+PATH: third_party\blink\renderer\modules\speech\speech_synthesis.cc
+}
+
+const HeapVector<Member<SpeechSynthesisVoice>>& SpeechSynthesis::getVoices() {
+  // Kick off initialization here to ensure voice list gets populated.
+  std::ignore = TryEnsureMojomSynthesis();
+  return voice_list_;
+}
+
+bool SpeechSynthesis::Speaking() const {
+  // If we have a current speech utterance, then that means we're assumed to be
+  // in a speaking state. This state is independent of whether the utterance
+  // happens to be paused.
+  return CurrentSpeechUtterance();
+}
+
+bool SpeechSynthesis::pending() const {
+  // This is true if there are any utterances that have not started.
+  // That means there will be more than one in the queue.
+  return utterance_queue_.size() > 1;
+}
+
+bool SpeechSynthesis::paused() const {
+  return is_paused_;
+}
+
+void SpeechSynthesis::Speak(const String& text, const String& lang) {
+  ScriptState* script_state =
+      ToScriptStateForMainWorld(GetSupplementable()->GetFrame());
+  SpeechSynthesisUtterance* utterance =
+      SpeechSynthesisUtterance::Create(GetSupplementable(), text);
+  utterance->setLang(lang);
+  speak(script_state, utterance);
+}
+
+void SpeechSynthesis::speak(ScriptState* script_state,
+                            SpeechSynthesisUtterance* utterance) {
+  DCHECK(utterance);
+  if (!script_state->ContextIsValid())
+    return;
+
+  // Note: Non-UseCounter based TTS metrics are of the form TextToSpeech.* and
+  // are generally global, whereas these are scoped to a single page load.
+  UseCounter::Count(GetSupplementable(), WebFeature::kTextToSpeech_Speak);
+  GetSupplementable()->CountUseOnlyInCrossOriginIframe(
+      WebFeature::kTextToSpeech_SpeakCrossOrigin);
+  if (!IsAllowedToStartByAutoplay()) {
+    Deprecation::CountDeprecation(
+
+
+============================================================
+[P2] SpeechSynthesisVoice  (Speech voice name)
+============================================================
+KHONG TIM THAY
+
+============================================================
+[P2] PluginArray_item  (navigator.plugins)
+============================================================
+--- dom_plugin_array.cc | dong 79 ---
+PATH: third_party\blink\renderer\modules\plugins\dom_plugin_array.cc
+}
+
+DOMPlugin* DOMPluginArray::item(unsigned index) {
+  if (index >= dom_plugins_.size()) {
+    return nullptr;
+  }
+  return dom_plugins_[index].Get();
+}
+
+DOMPlugin* DOMPluginArray::namedItem(const AtomicString& property_name) {
+  for (const auto& plugin : dom_plugins_) {
+    if (plugin->name() == property_name) {
+      return plugin.Get();
+    }
+  }
+  return nullptr;
+}
+
+void DOMPluginArray::NamedPropertyEnumerator(Vector<String>& property_names,
+                                             ExceptionState&) const {
+  property_names.ReserveInitialCapacity(dom_plugins_.size());
+  for (const auto& plugin : dom_plugins_) {
+    property_names.UncheckedAppend(plugin->name());
+  }
+}
+
+bool DOMPluginArray::NamedPropertyQuery(const AtomicString& property_name,
+                                        ExceptionState& exception_state) const {
+  Vector<String> properties;
+  NamedPropertyEnumerator(properties, exception_state);
+  return properties.Contains(property_name);
+}
+
+void DOMPluginArray::refresh(bool reload) {
+  if (!window_) {
+    return;
+  }
+  if (PluginData* data = GetPluginData()) {
+    data->ResetPluginData();
+  }
+  if (reload && window_->GetFrame()) {
+    window_->GetFrame()->Reload(WebFrameLoadType::kReload);
+  }
+}
+
+PluginData* DOMPluginArray::GetPluginData() const {
+  return (window_ && window_->GetFrame()) ? window_->GetFrame()->GetPluginData()
+
+
+============================================================
+[P2] MimeTypeArray_item  (navigator.mimeTypes)
+============================================================
+--- dom_mime_type_array.cc | dong 52 ---
+PATH: third_party\blink\renderer\modules\plugins\dom_mime_type_array.cc
+}
+
+DOMMimeType* DOMMimeTypeArray::item(unsigned index) {
+  if (index >= dom_mime_types_.size()) {
+    return nullptr;
+  }
+  return dom_mime_types_[index].Get();
+}
+
+DOMMimeType* DOMMimeTypeArray::namedItem(const AtomicString& property_name) {
+  for (const auto& mimetype : dom_mime_types_) {
+    if (mimetype->type() == property_name) {
+      return mimetype.Get();
+    }
+  }
+  return nullptr;
+}
+
+void DOMMimeTypeArray::NamedPropertyEnumerator(Vector<String>& property_names,
+                                               ExceptionState&) const {
+  property_names.ReserveInitialCapacity(dom_mime_types_.size());
+  for (const auto& mimetype : dom_mime_types_) {
+    property_names.UncheckedAppend(mimetype->type());
+  }
+}
+
+bool DOMMimeTypeArray::NamedPropertyQuery(const AtomicString& property_name,
+                                          ExceptionState&) const {
+  return base::Contains(dom_mime_types_, property_name, &DOMMimeType::type);
+}
+
+}  // namespace blink
+
+
+============================================================
+[P2] PluginArray_length  (navigator.plugins.length)
+============================================================
+--- dom_plugin_array.cc | dong 75 ---
+PATH: third_party\blink\renderer\modules\plugins\dom_plugin_array.cc
+}
+
+unsigned DOMPluginArray::length() const {
+  return dom_plugins_.size();
+}
+
+DOMPlugin* DOMPluginArray::item(unsigned index) {
+  if (index >= dom_plugins_.size()) {
+    return nullptr;
+  }
+  return dom_plugins_[index].Get();
+}
+
+DOMPlugin* DOMPluginArray::namedItem(const AtomicString& property_name) {
+  for (const auto& plugin : dom_plugins_) {
+    if (plugin->name() == property_name) {
+      return plugin.Get();
+    }
+  }
+  return nullptr;
+}
+
+void DOMPluginArray::NamedPropertyEnumerator(Vector<String>& property_names,
+                                             ExceptionState&) const {
+  property_names.ReserveInitialCapacity(dom_plugins_.size());
+  for (const auto& plugin : dom_plugins_) {
+    property_names.UncheckedAppend(plugin->name());
+  }
+}
+
+bool DOMPluginArray::NamedPropertyQuery(const AtomicString& property_name,
+                                        ExceptionState& exception_state) const {
+  Vector<String> properties;
+  NamedPropertyEnumerator(properties, exception_state);
+  return properties.Contains(property_name);
+}
+
+void DOMPluginArray::refresh(bool reload) {
+  if (!window_) {
+    return;
+  }
+  if (PluginData* data = GetPluginData()) {
+    data->ResetPluginData();
+  }
+  if (reload && window_->GetFrame()) {
+    window_->GetFrame()->Reload(WebFrameLoadType::kReload);
+  }
+
+
+============================================================
+[P1] getTimezoneOffset  (Date.getTimezoneOffset)
+============================================================
+KHONG TIM THAY
+
+============================================================
+[P1] DateTimeFormat_timezone  (Intl timezone)
+============================================================
+KHONG TIM THAY
+
+============================================================
+[P1] V8LocalTime  (V8 local time offset)
+============================================================
+KHONG TIM THAY
+
+============================================================
+[P2] effectiveType  (connection.effectiveType)
 ============================================================
 --- network_information.cc | dong 113 ---
 PATH: third_party\blink\renderer\modules\netinfo\network_information.cc
@@ -1557,139 +2683,178 @@ uint32_t NetworkInformation::rtt() {
   }
 
   return http_rtt_msec_;
+}
+
+double NetworkInformation::downlink() {
+  MaybeShowWebHoldbackConsoleMsg();
+  std::optional<double> override_downlink_mbps =
+      GetNetworkStateNotifier().GetWebHoldbackDownlinkThroughputMbps();
+  if (override_downlink_mbps) {
+    return GetNetworkStateNotifier().RoundMbps(Host(),
+                                               override_downlink_mbps.value());
+  }
 
 
 ============================================================
-TIM: connection_type  (navigator.connection.type)
+[P2] downlink  (connection.downlink)
 ============================================================
---- network_information.cc | dong 86 ---
+--- network_information.cc | dong 150 ---
 PATH: third_party\blink\renderer\modules\netinfo\network_information.cc
 }
 
-V8ConnectionType NetworkInformation::type() const {
-  if (RuntimeEnabledFeatures::NetInfoConstantTypeEnabled()) {
-    return V8ConnectionType(V8ConnectionType::Enum::kUnknown);
-  }
-
-  // type_ is only updated when listening for events, so ask
-  // networkStateNotifier if not listening (crbug.com/379841).
-  if (!IsObserving()) {
-    return V8ConnectionType(
-        ConnectionTypeToEnum(GetNetworkStateNotifier().ConnectionType()));
-  }
-
-  // If observing, return m_type which changes when the event fires, per spec.
-  return V8ConnectionType(ConnectionTypeToEnum(type_));
-}
-
-double NetworkInformation::downlinkMax() const {
-  if (RuntimeEnabledFeatures::NetInfoConstantTypeEnabled()) {
-    return std::numeric_limits<double>::infinity();
-  }
-
-  if (!IsObserving())
-    return GetNetworkStateNotifier().MaxBandwidth();
-
-  return downlink_max_mbps_;
-}
-
-V8EffectiveConnectionType NetworkInformation::effectiveType() {
+double NetworkInformation::downlink() {
   MaybeShowWebHoldbackConsoleMsg();
-  std::optional<WebEffectiveConnectionType> override_ect =
-      GetNetworkStateNotifier().GetWebHoldbackEffectiveType();
-  if (override_ect) {
-    return V8EffectiveConnectionType(
-        EffectiveConnectionTypeToEnum(override_ect.value()));
+  std::optional<double> override_downlink_mbps =
+      GetNetworkStateNotifier().GetWebHoldbackDownlinkThroughputMbps();
+  if (override_downlink_mbps) {
+    return GetNetworkStateNotifier().RoundMbps(Host(),
+                                               override_downlink_mbps.value());
   }
+
+  if (!IsObserving()) {
+    return GetNetworkStateNotifier().RoundMbps(
+        Host(), GetNetworkStateNotifier().DownlinkThroughputMbps());
+  }
+
+  return downlink_mbps_;
+}
+
+bool NetworkInformation::saveData() const {
+  bool save_data =
+      IsObserving() ? save_data_ : GetNetworkStateNotifier().SaveDataEnabled();
+
+  probe::ApplyDataSaverOverride(probe::ToCoreProbeSink(GetExecutionContext()),
+                                save_data);
+  return save_data;
+}
+
+void NetworkInformation::ConnectionChange(
+    WebConnectionType type,
+    double downlink_max_mbps,
+    WebEffectiveConnectionType effective_type,
+    const std::optional<base::TimeDelta>& http_rtt,
+    const std::optional<base::TimeDelta>& transport_rtt,
+    const std::optional<double>& downlink_mbps,
+    bool save_data) {
+  DCHECK(GetExecutionContext()->IsContextThread());
+
+  const String host = Host();
+  uint32_t new_http_rtt_msec =
+      GetNetworkStateNotifier().RoundRtt(host, http_rtt);
+  double new_downlink_mbps =
+      GetNetworkStateNotifier().RoundMbps(host, downlink_mbps);
+
+  bool network_quality_estimate_changed = false;
+  // Allow setting |network_quality_estimate_changed| to true only if the
+  // network quality holdback experiment is not enabled.
 
 
 ============================================================
-TIM: createOffer  (WebRTC - co the leak IP)
+[P2] rtt  (connection.rtt)
 ============================================================
---- rtc_peer_connection.cc | dong 737 ---
-PATH: third_party\blink\renderer\modules\peerconnection\rtc_peer_connection.cc
+--- network_information.cc | dong 134 ---
+PATH: third_party\blink\renderer\modules\netinfo\network_information.cc
 }
 
-ScriptPromise<RTCSessionDescriptionInit> RTCPeerConnection::createOffer(
-    ScriptState* script_state,
-    const RTCOfferOptions* options,
-    ExceptionState& exception_state) {
-  if (signaling_state_ ==
-      webrtc::PeerConnectionInterface::SignalingState::kClosed) {
-    exception_state.ThrowDOMException(DOMExceptionCode::kInvalidStateError,
-                                      kSignalingStateClosedMessage);
-    return EmptyPromise();
-  }
-  auto* resolver =
-      MakeGarbageCollected<ScriptPromiseResolver<RTCSessionDescriptionInit>>(
-          script_state, exception_state.GetContext());
-  auto promise = resolver->Promise();
-  RTCSessionDescriptionRequest* request =
-      RTCSessionDescriptionRequestPromiseImpl::Create(this, resolver);
-
-  ExecutionContext* context = ExecutionContext::From(script_state);
-  UseCounter::Count(context, WebFeature::kRTCPeerConnectionCreateOffer);
-  UseCounter::Count(context, WebFeature::kRTCPeerConnectionCreateOfferPromise);
-  if (options->hasOfferToReceiveAudio() || options->hasOfferToReceiveVideo()) {
-    UseCounter::Count(
-        context,
-        WebFeature::kRTCPeerConnectionCreateOfferOptionsOfferToReceive);
+uint32_t NetworkInformation::rtt() {
+  MaybeShowWebHoldbackConsoleMsg();
+  std::optional<base::TimeDelta> override_rtt =
+      GetNetworkStateNotifier().GetWebHoldbackHttpRtt();
+  if (override_rtt) {
+    return GetNetworkStateNotifier().RoundRtt(Host(), override_rtt.value());
   }
 
-  auto platform_transceivers = peer_handler_->CreateOffer(
-      request, ConvertToRTCOfferOptionsPlatform(options));
-  for (auto& platform_transceiver : platform_transceivers)
-    CreateOrUpdateTransceiver(std::move(platform_transceiver));
-  return promise;
+  if (!IsObserving()) {
+    return GetNetworkStateNotifier().RoundRtt(
+        Host(), GetNetworkStateNotifier().HttpRtt());
+  }
+
+  return http_rtt_msec_;
 }
 
-ScriptPromise<IDLUndefined> RTCPeerConnection::createOffer(
-    ScriptState* script_state,
+double NetworkInformation::downlink() {
+  MaybeShowWebHoldbackConsoleMsg();
+  std::optional<double> override_downlink_mbps =
+      GetNetworkStateNotifier().GetWebHoldbackDownlinkThroughputMbps();
+  if (override_downlink_mbps) {
+    return GetNetworkStateNotifier().RoundMbps(Host(),
+                                               override_downlink_mbps.value());
+  }
 
+  if (!IsObserving()) {
+    return GetNetworkStateNotifier().RoundMbps(
+        Host(), GetNetworkStateNotifier().DownlinkThroughputMbps());
+  }
 
---- rtc_peer_connection.cc | dong 770 ---
-PATH: third_party\blink\renderer\modules\peerconnection\rtc_peer_connection.cc
+  return downlink_mbps_;
 }
 
-ScriptPromise<IDLUndefined> RTCPeerConnection::createOffer(
-    ScriptState* script_state,
-    V8RTCSessionDescriptionCallback* success_callback,
-    V8RTCPeerConnectionErrorCallback* error_callback,
-    const RTCOfferOptions* options) {
-  DCHECK(success_callback);
-  DCHECK(error_callback);
-  ExecutionContext* context = ExecutionContext::From(script_state);
-  UseCounter::Count(context, WebFeature::kRTCPeerConnectionCreateOffer);
-  UseCounter::Count(
-      context, WebFeature::kRTCPeerConnectionCreateOfferLegacyFailureCallback);
-  UseCounter::Count(context,
-                    WebFeature::kRTCPeerConnectionCreateOfferLegacyCompliant);
-  if (CallErrorCallbackIfSignalingStateClosed(context, signaling_state_,
-                                              error_callback))
-    return ToResolvedUndefinedPromise(script_state);
+bool NetworkInformation::saveData() const {
+  bool save_data =
+      IsObserving() ? save_data_ : GetNetworkStateNotifier().SaveDataEnabled();
 
-  RTCSessionDescriptionRequest* request =
-      RTCSessionDescriptionRequestImpl::Create(
-          GetExecutionContext(), this, success_callback, error_callback);
-
-  Vector<std::unique_ptr<RTCRtpTransceiverPlatform>> platform_transceivers =
-      peer_handler_->CreateOffer(request,
-                                 ConvertToRTCOfferOptionsPlatform(options));
-  for (auto& platform_transceiver : platform_transceivers)
-    CreateOrUpdateTransceiver(std::move(platform_transceiver));
-
-  return ToResolvedUndefinedPromise(script_state);
+  probe::ApplyDataSaverOverride(probe::ToCoreProbeSink(GetExecutionContext()),
+                                save_data);
+  return save_data;
 }
 
-ScriptPromise<RTCSessionDescriptionInit> RTCPeerConnection::createAnswer(
-    ScriptState* script_state,
-    const RTCAnswerOptions* options,
-    ExceptionState& exception_state) {
-  if (signaling_state_ ==
+void NetworkInformation::ConnectionChange(
+    WebConnectionType type,
+    double downlink_max_mbps,
 
 
 ============================================================
-TIM: permissions_query  (navigator.permissions)
+[P3] cookieEnabled  (navigator.cookieEnabled)
+============================================================
+KHONG TIM THAY
+
+============================================================
+[P3] doNotTrack  (navigator.doNotTrack)
+============================================================
+KHONG TIM THAY
+
+============================================================
+[P3] pdfViewerEnabled  (navigator.pdfViewerEnabled)
+============================================================
+KHONG TIM THAY
+
+============================================================
+[P1] webdriver  (navigator.webdriver - QUAN TRONG)
+============================================================
+--- navigator.cc | dong 101 ---
+PATH: third_party\blink\renderer\core\frame\navigator.cc
+}
+
+bool Navigator::webdriver() const {
+  if (RuntimeEnabledFeatures::AutomationControlledEnabled())
+    return true;
+
+  bool automation_enabled = false;
+  probe::ApplyAutomationOverride(GetExecutionContext(), automation_enabled);
+  return automation_enabled;
+}
+
+String Navigator::GetAcceptLanguages() {
+  if (!DomWindow())
+    return DefaultLanguage();
+
+  return DomWindow()
+      ->GetFrame()
+      ->GetPage()
+      ->GetChromeClient()
+      .AcceptLanguages();
+}
+
+void Navigator::Trace(Visitor* visitor) const {
+  NavigatorBase::Trace(visitor);
+  Supplementable<Navigator>::Trace(visitor);
+}
+
+}  // namespace blink
+
+
+============================================================
+[P2] permissions_state  (permissions.query state)
 ============================================================
 --- permission_status.cc | dong 88 ---
 PATH: third_party\blink\renderer\modules\permissions\permission_status.cc
@@ -1730,7 +2895,1579 @@ void PermissionStatus::OnPermissionStatusChange(MojoPermissionStatus status) {
     auto* document = window->document();
     if (!document || !document->IsActive()) {
       // Note: if the event is dropped out while in BFCache, one single change
+      // event might be dispatched later when the page is restored from BFCache.
+      return;
+    }
+  }
+  DispatchEvent(*Event::Create(event_type_names::kChange));
+}
+
+void PermissionStatus::Trace(Visitor* visitor) const {
+  visitor->Trace(listener_);
+  EventTarget::Trace(visitor);
 
 
 ============================================================
-TONG KET: 42 ket qua
+[P2] matchMedia  (window.matchMedia)
+============================================================
+--- local_dom_window.cc | dong 1073 ---
+PATH: third_party\blink\renderer\core\frame\local_dom_window.cc
+}
+
+MediaQueryList* LocalDOMWindow::matchMedia(const String& media) {
+  return document()->GetMediaQueryMatcher().MatchMedia(media);
+}
+
+void LocalDOMWindow::FrameDestroyed() {
+  TRACE_EVENT0("navigation", "LocalDOMWindow::FrameDestroyed");
+  base::ScopedUmaHistogramTimer histogram_timer(
+      "Navigation.LocalDOMWindow.FrameDestroyed");
+  BackForwardCacheBufferLimitTracker::Get()
+      .DidRemoveFrameOrWorkerFromBackForwardCache(
+          total_bytes_buffered_while_in_back_forward_cache_);
+  total_bytes_buffered_while_in_back_forward_cache_ = 0;
+
+  // Some unit tests manually call FrameDestroyed(). Don't run it a second time.
+  if (!GetFrame())
+    return;
+  // In the Reset() case, this Document::Shutdown() early-exits because it was
+  // already called earlier in the commit process.
+  // TODO(japhet): Can we merge this function and Reset()? At least, this
+  // function should be renamed to Detach(), since in the Reset() case the frame
+  // is not being destroyed.
+  document()->Shutdown();
+  document()->RemoveAllEventListenersRecursively();
+  if (soft_navigation_heuristics_) {
+    soft_navigation_heuristics_->Shutdown();
+    soft_navigation_heuristics_ = nullptr;
+  }
+  GetAgent()->DetachContext(this);
+  NotifyContextDestroyed();
+  RemoveAllEventListeners();
+  MainThreadDebugger::Instance(GetIsolate())
+      ->DidClearContextsForFrame(GetFrame());
+  DisconnectFromFrame();
+}
+
+void LocalDOMWindow::RegisterEventListenerObserver(
+    EventListenerObserver* event_listener_observer) {
+  event_listener_observers_.insert(event_listener_observer);
+}
+
+void LocalDOMWindow::Reset() {
+  DCHECK(document());
+  FrameDestroyed();
+
+  screen_ = nullptr;
+
+
+============================================================
+[P2] prefers_color_scheme  (prefers-color-scheme media query)
+============================================================
+--- style_engine_test.cc | dong 1597 ---
+PATH: third_party\blink\renderer\core\css\style_engine_test.cc
+    <style>
+      body { color: red }
+      @media (prefers-color-scheme: dark) {
+        body { color: green }
+      }
+    </style>
+    <body></body>
+  )HTML");
+
+  UpdateAllLifecyclePhases();
+  EXPECT_EQ(Color::FromRGB(255, 0, 0),
+            GetDocument().body()->GetComputedStyle()->VisitedDependentColor(
+                GetCSSPropertyColor()));
+
+  color_scheme_helper.SetPreferredColorScheme(
+      mojom::blink::PreferredColorScheme::kDark);
+  UpdateAllLifecyclePhases();
+  EXPECT_EQ(Color::FromRGB(0, 128, 0),
+            GetDocument().body()->GetComputedStyle()->VisitedDependentColor(
+                GetCSSPropertyColor()));
+}
+
+TEST_F(StyleEngineTest, MediaQueriesChangeColorSchemeForcedDarkMode) {
+  GetDocument().GetSettings()->SetForceDarkModeEnabled(true);
+  ColorSchemeHelper color_scheme_helper(GetDocument());
+  color_scheme_helper.SetPreferredColorScheme(
+      mojom::blink::PreferredColorScheme::kDark);
+
+  GetDocument().body()->SetInnerHTMLWithoutTrustedTypes(R"HTML(
+    <style>
+      @media (prefers-color-scheme: dark) {
+        body { color: green }
+      }
+      @media (prefers-color-scheme: light) {
+        body { color: red }
+      }
+    </style>
+    <body></body>
+  )HTML");
+
+  UpdateAllLifecyclePhases();
+  EXPECT_EQ(Color::FromRGB(0, 128, 0),
+            GetDocument().body()->GetComputedStyle()->VisitedDependentColor(
+                GetCSSPropertyColor()));
+}
+
+TEST_F(StyleEngineTest, MediaQueriesChangePrefersContrast) {
+
+
+--- style_engine_test.cc | dong 1625 ---
+PATH: third_party\blink\renderer\core\css\style_engine_test.cc
+  GetDocument().body()->SetInnerHTMLWithoutTrustedTypes(R"HTML(
+    <style>
+      @media (prefers-color-scheme: dark) {
+        body { color: green }
+      }
+      @media (prefers-color-scheme: light) {
+        body { color: red }
+      }
+    </style>
+    <body></body>
+  )HTML");
+
+  UpdateAllLifecyclePhases();
+  EXPECT_EQ(Color::FromRGB(0, 128, 0),
+            GetDocument().body()->GetComputedStyle()->VisitedDependentColor(
+                GetCSSPropertyColor()));
+}
+
+TEST_F(StyleEngineTest, MediaQueriesChangePrefersContrast) {
+  ScopedForcedColorsForTest forced_scoped_feature(true);
+
+  ColorSchemeHelper color_scheme_helper(GetDocument());
+  color_scheme_helper.SetPreferredContrast(
+      mojom::blink::PreferredContrast::kNoPreference);
+
+  GetDocument().body()->SetInnerHTMLWithoutTrustedTypes(R"HTML(
+    <style>
+      body { color: red; forced-color-adjust: none; }
+      @media (prefers-contrast: no-preference) {
+        body { color: green }
+      }
+      @media (prefers-contrast) {
+        body { color: blue }
+      }
+    </style>
+    <body></body>
+  )HTML");
+
+  UpdateAllLifecyclePhases();
+  EXPECT_EQ(Color::FromRGB(0, 128, 0),
+            GetDocument().body()->GetComputedStyle()->VisitedDependentColor(
+                GetCSSPropertyColor()));
+
+  color_scheme_helper.SetPreferredContrast(
+      mojom::blink::PreferredContrast::kMore);
+  UpdateAllLifecyclePhases();
+  EXPECT_EQ(Color::FromRGB(0, 0, 255),
+
+
+--- style_engine_test.cc | dong 1628 ---
+PATH: third_party\blink\renderer\core\css\style_engine_test.cc
+        body { color: green }
+      }
+      @media (prefers-color-scheme: light) {
+        body { color: red }
+      }
+    </style>
+    <body></body>
+  )HTML");
+
+  UpdateAllLifecyclePhases();
+  EXPECT_EQ(Color::FromRGB(0, 128, 0),
+            GetDocument().body()->GetComputedStyle()->VisitedDependentColor(
+                GetCSSPropertyColor()));
+}
+
+TEST_F(StyleEngineTest, MediaQueriesChangePrefersContrast) {
+  ScopedForcedColorsForTest forced_scoped_feature(true);
+
+  ColorSchemeHelper color_scheme_helper(GetDocument());
+  color_scheme_helper.SetPreferredContrast(
+      mojom::blink::PreferredContrast::kNoPreference);
+
+  GetDocument().body()->SetInnerHTMLWithoutTrustedTypes(R"HTML(
+    <style>
+      body { color: red; forced-color-adjust: none; }
+      @media (prefers-contrast: no-preference) {
+        body { color: green }
+      }
+      @media (prefers-contrast) {
+        body { color: blue }
+      }
+    </style>
+    <body></body>
+  )HTML");
+
+  UpdateAllLifecyclePhases();
+  EXPECT_EQ(Color::FromRGB(0, 128, 0),
+            GetDocument().body()->GetComputedStyle()->VisitedDependentColor(
+                GetCSSPropertyColor()));
+
+  color_scheme_helper.SetPreferredContrast(
+      mojom::blink::PreferredContrast::kMore);
+  UpdateAllLifecyclePhases();
+  EXPECT_EQ(Color::FromRGB(0, 0, 255),
+            GetDocument().body()->GetComputedStyle()->VisitedDependentColor(
+                GetCSSPropertyColor()));
+
+
+
+--- style_engine_test.cc | dong 1991 ---
+PATH: third_party\blink\renderer\core\css\style_engine_test.cc
+        forced-color-adjust: none;
+      }
+      @media (forced-colors: none) and (prefers-color-scheme: light) {
+        body { color: red }
+      }
+      @media (forced-colors: none) and (prefers-color-scheme: dark) {
+        body { color: green }
+      }
+      @media (forced-colors: active) and (prefers-color-scheme: dark) {
+        body { color: orange }
+      }
+      @media (forced-colors: active) and (prefers-color-scheme: light) {
+        body { color: blue }
+      }
+    </style>
+    <body></body>
+  )HTML");
+
+  // InForcedColors = false, PreferredColorScheme = kLight
+  ColorSchemeHelper color_scheme_helper(GetDocument());
+  color_scheme_helper.SetInForcedColors(GetDocument(),
+                                        /*in_forced_colors=*/false);
+  color_scheme_helper.SetPreferredColorScheme(
+      mojom::blink::PreferredColorScheme::kLight);
+  UpdateAllLifecyclePhases();
+  EXPECT_EQ(Color::FromRGB(255, 0, 0),
+            GetDocument().body()->GetComputedStyle()->VisitedDependentColor(
+                GetCSSPropertyColor()));
+
+  // ForcedColors = kNone, PreferredColorScheme = kDark
+  color_scheme_helper.SetPreferredColorScheme(
+      mojom::blink::PreferredColorScheme::kDark);
+  UpdateAllLifecyclePhases();
+  EXPECT_EQ(Color::FromRGB(0, 128, 0),
+            GetDocument().body()->GetComputedStyle()->VisitedDependentColor(
+                GetCSSPropertyColor()));
+
+  // InForcedColors = true, PreferredColorScheme = kDark
+  color_scheme_helper.SetInForcedColors(GetDocument(),
+                                        /*in_forced_colors=*/true);
+  UpdateAllLifecyclePhases();
+  EXPECT_EQ(Color::FromRGB(255, 165, 0),
+            GetDocument().body()->GetComputedStyle()->VisitedDependentColor(
+                GetCSSPropertyColor()));
+
+  // InForcedColors = true, PreferredColorScheme = kLight
+  color_scheme_helper.SetPreferredColorScheme(
+
+
+--- style_engine_test.cc | dong 1994 ---
+PATH: third_party\blink\renderer\core\css\style_engine_test.cc
+        body { color: red }
+      }
+      @media (forced-colors: none) and (prefers-color-scheme: dark) {
+        body { color: green }
+      }
+      @media (forced-colors: active) and (prefers-color-scheme: dark) {
+        body { color: orange }
+      }
+      @media (forced-colors: active) and (prefers-color-scheme: light) {
+        body { color: blue }
+      }
+    </style>
+    <body></body>
+  )HTML");
+
+  // InForcedColors = false, PreferredColorScheme = kLight
+  ColorSchemeHelper color_scheme_helper(GetDocument());
+  color_scheme_helper.SetInForcedColors(GetDocument(),
+                                        /*in_forced_colors=*/false);
+  color_scheme_helper.SetPreferredColorScheme(
+      mojom::blink::PreferredColorScheme::kLight);
+  UpdateAllLifecyclePhases();
+  EXPECT_EQ(Color::FromRGB(255, 0, 0),
+            GetDocument().body()->GetComputedStyle()->VisitedDependentColor(
+                GetCSSPropertyColor()));
+
+  // ForcedColors = kNone, PreferredColorScheme = kDark
+  color_scheme_helper.SetPreferredColorScheme(
+      mojom::blink::PreferredColorScheme::kDark);
+  UpdateAllLifecyclePhases();
+  EXPECT_EQ(Color::FromRGB(0, 128, 0),
+            GetDocument().body()->GetComputedStyle()->VisitedDependentColor(
+                GetCSSPropertyColor()));
+
+  // InForcedColors = true, PreferredColorScheme = kDark
+  color_scheme_helper.SetInForcedColors(GetDocument(),
+                                        /*in_forced_colors=*/true);
+  UpdateAllLifecyclePhases();
+  EXPECT_EQ(Color::FromRGB(255, 165, 0),
+            GetDocument().body()->GetComputedStyle()->VisitedDependentColor(
+                GetCSSPropertyColor()));
+
+  // InForcedColors = true, PreferredColorScheme = kLight
+  color_scheme_helper.SetPreferredColorScheme(
+      mojom::blink::PreferredColorScheme::kLight);
+  UpdateAllLifecyclePhases();
+  EXPECT_EQ(Color::FromRGB(0, 0, 255),
+
+
+--- style_engine_test.cc | dong 1997 ---
+PATH: third_party\blink\renderer\core\css\style_engine_test.cc
+        body { color: green }
+      }
+      @media (forced-colors: active) and (prefers-color-scheme: dark) {
+        body { color: orange }
+      }
+      @media (forced-colors: active) and (prefers-color-scheme: light) {
+        body { color: blue }
+      }
+    </style>
+    <body></body>
+  )HTML");
+
+  // InForcedColors = false, PreferredColorScheme = kLight
+  ColorSchemeHelper color_scheme_helper(GetDocument());
+  color_scheme_helper.SetInForcedColors(GetDocument(),
+                                        /*in_forced_colors=*/false);
+  color_scheme_helper.SetPreferredColorScheme(
+      mojom::blink::PreferredColorScheme::kLight);
+  UpdateAllLifecyclePhases();
+  EXPECT_EQ(Color::FromRGB(255, 0, 0),
+            GetDocument().body()->GetComputedStyle()->VisitedDependentColor(
+                GetCSSPropertyColor()));
+
+  // ForcedColors = kNone, PreferredColorScheme = kDark
+  color_scheme_helper.SetPreferredColorScheme(
+      mojom::blink::PreferredColorScheme::kDark);
+  UpdateAllLifecyclePhases();
+  EXPECT_EQ(Color::FromRGB(0, 128, 0),
+            GetDocument().body()->GetComputedStyle()->VisitedDependentColor(
+                GetCSSPropertyColor()));
+
+  // InForcedColors = true, PreferredColorScheme = kDark
+  color_scheme_helper.SetInForcedColors(GetDocument(),
+                                        /*in_forced_colors=*/true);
+  UpdateAllLifecyclePhases();
+  EXPECT_EQ(Color::FromRGB(255, 165, 0),
+            GetDocument().body()->GetComputedStyle()->VisitedDependentColor(
+                GetCSSPropertyColor()));
+
+  // InForcedColors = true, PreferredColorScheme = kLight
+  color_scheme_helper.SetPreferredColorScheme(
+      mojom::blink::PreferredColorScheme::kLight);
+  UpdateAllLifecyclePhases();
+  EXPECT_EQ(Color::FromRGB(0, 0, 255),
+            GetDocument().body()->GetComputedStyle()->VisitedDependentColor(
+                GetCSSPropertyColor()));
+}
+
+
+--- style_engine_test.cc | dong 2000 ---
+PATH: third_party\blink\renderer\core\css\style_engine_test.cc
+        body { color: orange }
+      }
+      @media (forced-colors: active) and (prefers-color-scheme: light) {
+        body { color: blue }
+      }
+    </style>
+    <body></body>
+  )HTML");
+
+  // InForcedColors = false, PreferredColorScheme = kLight
+  ColorSchemeHelper color_scheme_helper(GetDocument());
+  color_scheme_helper.SetInForcedColors(GetDocument(),
+                                        /*in_forced_colors=*/false);
+  color_scheme_helper.SetPreferredColorScheme(
+      mojom::blink::PreferredColorScheme::kLight);
+  UpdateAllLifecyclePhases();
+  EXPECT_EQ(Color::FromRGB(255, 0, 0),
+            GetDocument().body()->GetComputedStyle()->VisitedDependentColor(
+                GetCSSPropertyColor()));
+
+  // ForcedColors = kNone, PreferredColorScheme = kDark
+  color_scheme_helper.SetPreferredColorScheme(
+      mojom::blink::PreferredColorScheme::kDark);
+  UpdateAllLifecyclePhases();
+  EXPECT_EQ(Color::FromRGB(0, 128, 0),
+            GetDocument().body()->GetComputedStyle()->VisitedDependentColor(
+                GetCSSPropertyColor()));
+
+  // InForcedColors = true, PreferredColorScheme = kDark
+  color_scheme_helper.SetInForcedColors(GetDocument(),
+                                        /*in_forced_colors=*/true);
+  UpdateAllLifecyclePhases();
+  EXPECT_EQ(Color::FromRGB(255, 165, 0),
+            GetDocument().body()->GetComputedStyle()->VisitedDependentColor(
+                GetCSSPropertyColor()));
+
+  // InForcedColors = true, PreferredColorScheme = kLight
+  color_scheme_helper.SetPreferredColorScheme(
+      mojom::blink::PreferredColorScheme::kLight);
+  UpdateAllLifecyclePhases();
+  EXPECT_EQ(Color::FromRGB(0, 0, 255),
+            GetDocument().body()->GetComputedStyle()->VisitedDependentColor(
+                GetCSSPropertyColor()));
+}
+
+TEST_F(StyleEngineTest, MediaQueriesForcedColorsOverride) {
+  GetDocument().body()->SetInnerHTMLWithoutTrustedTypes(R"HTML(
+
+
+--- style_engine_test.cc | dong 2097 ---
+PATH: third_party\blink\renderer\core\css\style_engine_test.cc
+    <style>
+      body { color: red }
+      @media (prefers-color-scheme: dark) {
+        body { color: green }
+      }
+    </style>
+    <body></body>
+  )HTML");
+
+  UpdateAllLifecyclePhases();
+  EXPECT_EQ(Color::FromRGB(255, 0, 0),
+            GetDocument().body()->GetComputedStyle()->VisitedDependentColor(
+                GetCSSPropertyColor()));
+
+  GetDocument().GetPage()->SetMediaFeatureOverride(
+      media_feature_names::kPrefersColorSchemeMediaFeature, "dark");
+  UpdateAllLifecyclePhases();
+  EXPECT_EQ(Color::FromRGB(0, 128, 0),
+            GetDocument().body()->GetComputedStyle()->VisitedDependentColor(
+                GetCSSPropertyColor()));
+
+  GetDocument().GetPage()->ClearMediaFeatureOverrides();
+  UpdateAllLifecyclePhases();
+  EXPECT_EQ(Color::FromRGB(255, 0, 0),
+            GetDocument().body()->GetComputedStyle()->VisitedDependentColor(
+                GetCSSPropertyColor()));
+
+  GetDocument().GetPage()->SetPreferenceOverride(
+      media_feature_names::kPrefersColorSchemeMediaFeature, "dark");
+  UpdateAllLifecyclePhases();
+  EXPECT_EQ(Color::FromRGB(0, 128, 0),
+            GetDocument().body()->GetComputedStyle()->VisitedDependentColor(
+                GetCSSPropertyColor()));
+
+  GetDocument().GetPage()->ClearPreferenceOverrides();
+  UpdateAllLifecyclePhases();
+  EXPECT_EQ(Color::FromRGB(255, 0, 0),
+            GetDocument().body()->GetComputedStyle()->VisitedDependentColor(
+                GetCSSPropertyColor()));
+
+  GetDocument().GetPage()->SetPreferenceOverride(
+      media_feature_names::kPrefersColorSchemeMediaFeature, "dark");
+  UpdateAllLifecyclePhases();
+
+  // Invalid value resets override
+  GetDocument().GetPage()->SetPreferenceOverride(
+      media_feature_names::kPrefersColorSchemeMediaFeature, "invalid");
+
+
+--- style_engine_test.cc | dong 3813 ---
+PATH: third_party\blink\renderer\core\css\style_engine_test.cc
+    <style>
+      :root { color-scheme: light dark }
+      @media (prefers-color-scheme: light) {
+        body { color: green; }
+      }
+      @media (prefers-color-scheme: dark) {
+        body { color: red; }
+      }
+    </style>
+  )HTML");
+  UpdateAllLifecyclePhases();
+  Element* body = GetDocument().body();
+  Element* root = GetDocument().documentElement();
+
+  EXPECT_EQ(Color::kWhite, root->GetComputedStyle()->VisitedDependentColor(
+                               GetCSSPropertyColor()));
+  EXPECT_EQ(mojom::blink::ColorScheme::kDark,
+            root->GetComputedStyle()->UsedColorScheme());
+  EXPECT_EQ(
+      Color::FromRGB(255, 0, 0),
+      body->GetComputedStyle()->VisitedDependentColor(GetCSSPropertyColor()));
+
+  gfx::SizeF page_size(400, 400);
+  GetDocument().GetFrame()->StartPrinting(WebPrintParams(page_size));
+  EXPECT_EQ(Color::kBlack, root->GetComputedStyle()->VisitedDependentColor(
+                               GetCSSPropertyColor()));
+  EXPECT_EQ(mojom::blink::ColorScheme::kLight,
+            root->GetComputedStyle()->UsedColorScheme());
+  EXPECT_EQ(
+      Color::FromRGB(0, 128, 0),
+      body->GetComputedStyle()->VisitedDependentColor(GetCSSPropertyColor()));
+
+  GetDocument().GetFrame()->EndPrinting();
+  EXPECT_EQ(Color::kWhite, root->GetComputedStyle()->VisitedDependentColor(
+                               GetCSSPropertyColor()));
+  EXPECT_EQ(mojom::blink::ColorScheme::kDark,
+            root->GetComputedStyle()->UsedColorScheme());
+  EXPECT_EQ(
+      Color::FromRGB(255, 0, 0),
+      body->GetComputedStyle()->VisitedDependentColor(GetCSSPropertyColor()));
+}
+
+TEST_F(StyleEngineTest, PrintNoForceDarkMode) {
+  auto* frame_view = GetDocument().View();
+  GetDocument().documentElement()->SetInlineStyleProperty(
+      CSSPropertyID::kBackgroundColor, "white");
+  UpdateAllLifecyclePhasesForTest();
+
+
+--- style_engine_test.cc | dong 3816 ---
+PATH: third_party\blink\renderer\core\css\style_engine_test.cc
+        body { color: green; }
+      }
+      @media (prefers-color-scheme: dark) {
+        body { color: red; }
+      }
+    </style>
+  )HTML");
+  UpdateAllLifecyclePhases();
+  Element* body = GetDocument().body();
+  Element* root = GetDocument().documentElement();
+
+  EXPECT_EQ(Color::kWhite, root->GetComputedStyle()->VisitedDependentColor(
+                               GetCSSPropertyColor()));
+  EXPECT_EQ(mojom::blink::ColorScheme::kDark,
+            root->GetComputedStyle()->UsedColorScheme());
+  EXPECT_EQ(
+      Color::FromRGB(255, 0, 0),
+      body->GetComputedStyle()->VisitedDependentColor(GetCSSPropertyColor()));
+
+  gfx::SizeF page_size(400, 400);
+  GetDocument().GetFrame()->StartPrinting(WebPrintParams(page_size));
+  EXPECT_EQ(Color::kBlack, root->GetComputedStyle()->VisitedDependentColor(
+                               GetCSSPropertyColor()));
+  EXPECT_EQ(mojom::blink::ColorScheme::kLight,
+            root->GetComputedStyle()->UsedColorScheme());
+  EXPECT_EQ(
+      Color::FromRGB(0, 128, 0),
+      body->GetComputedStyle()->VisitedDependentColor(GetCSSPropertyColor()));
+
+  GetDocument().GetFrame()->EndPrinting();
+  EXPECT_EQ(Color::kWhite, root->GetComputedStyle()->VisitedDependentColor(
+                               GetCSSPropertyColor()));
+  EXPECT_EQ(mojom::blink::ColorScheme::kDark,
+            root->GetComputedStyle()->UsedColorScheme());
+  EXPECT_EQ(
+      Color::FromRGB(255, 0, 0),
+      body->GetComputedStyle()->VisitedDependentColor(GetCSSPropertyColor()));
+}
+
+TEST_F(StyleEngineTest, PrintNoForceDarkMode) {
+  auto* frame_view = GetDocument().View();
+  GetDocument().documentElement()->SetInlineStyleProperty(
+      CSSPropertyID::kBackgroundColor, "white");
+  UpdateAllLifecyclePhasesForTest();
+  EXPECT_EQ(frame_view->DocumentBackgroundColor(), Color::kWhite);
+  EXPECT_EQ(GetDocument().documentElement()->GetComputedStyle()->ForceDark(),
+            false);
+
+
+--- style_engine_test.cc | dong 4571 ---
+PATH: third_party\blink\renderer\core\css\style_engine_test.cc
+    <!doctype html>
+    <style>
+      @media (prefers-color-scheme: light) {
+        body { background: lime; }
+      }
+      @media (prefers-color-scheme: dark) {
+        body { background: green; }
+      }
+    </style>
+  )HTML");
+
+  test::RunPendingTasks();
+  Compositor().BeginFrame();
+
+  auto* frame_element = To<HTMLIFrameElement>(
+      GetDocument().getElementById(AtomicString("frame")));
+  auto* frame_document = frame_element->contentDocument();
+  ASSERT_TRUE(frame_document);
+  EXPECT_EQ(mojom::blink::PreferredColorScheme::kLight,
+            GetDocument().GetStyleEngine().GetPreferredColorScheme());
+  EXPECT_EQ(mojom::blink::PreferredColorScheme::kLight,
+            frame_document->GetStyleEngine().GetPreferredColorScheme());
+
+  color_scheme_helper.SetPreferredColorScheme(
+      mojom::blink::PreferredColorScheme::kDark);
+  test::RunPendingTasks();
+  Compositor().BeginFrame();
+
+  EXPECT_EQ(mojom::blink::PreferredColorScheme::kDark,
+            GetDocument().GetStyleEngine().GetPreferredColorScheme());
+  EXPECT_EQ(mojom::blink::PreferredColorScheme::kDark,
+            frame_document->GetStyleEngine().GetPreferredColorScheme());
+}
+
+TEST_F(StyleEngineContainerQueryTest,
+       UpdateStyleAndLayoutTreeForSizeContainer) {
+  GetDocument().body()->SetInnerHTMLWithoutTrustedTypes(R"HTML(
+    <style>
+      .container {
+        container-type: size;
+        width: 100px;
+        height: 100px;
+      }
+      @container (min-width: 200px) {
+        .affected { background-color: green; }
+      }
+    </style>
+
+
+--- style_engine_test.cc | dong 4574 ---
+PATH: third_party\blink\renderer\core\css\style_engine_test.cc
+        body { background: lime; }
+      }
+      @media (prefers-color-scheme: dark) {
+        body { background: green; }
+      }
+    </style>
+  )HTML");
+
+  test::RunPendingTasks();
+  Compositor().BeginFrame();
+
+  auto* frame_element = To<HTMLIFrameElement>(
+      GetDocument().getElementById(AtomicString("frame")));
+  auto* frame_document = frame_element->contentDocument();
+  ASSERT_TRUE(frame_document);
+  EXPECT_EQ(mojom::blink::PreferredColorScheme::kLight,
+            GetDocument().GetStyleEngine().GetPreferredColorScheme());
+  EXPECT_EQ(mojom::blink::PreferredColorScheme::kLight,
+            frame_document->GetStyleEngine().GetPreferredColorScheme());
+
+  color_scheme_helper.SetPreferredColorScheme(
+      mojom::blink::PreferredColorScheme::kDark);
+  test::RunPendingTasks();
+  Compositor().BeginFrame();
+
+  EXPECT_EQ(mojom::blink::PreferredColorScheme::kDark,
+            GetDocument().GetStyleEngine().GetPreferredColorScheme());
+  EXPECT_EQ(mojom::blink::PreferredColorScheme::kDark,
+            frame_document->GetStyleEngine().GetPreferredColorScheme());
+}
+
+TEST_F(StyleEngineContainerQueryTest,
+       UpdateStyleAndLayoutTreeForSizeContainer) {
+  GetDocument().body()->SetInnerHTMLWithoutTrustedTypes(R"HTML(
+    <style>
+      .container {
+        container-type: size;
+        width: 100px;
+        height: 100px;
+      }
+      @container (min-width: 200px) {
+        .affected { background-color: green; }
+      }
+    </style>
+    <div id="container1" class="container">
+      <span class="affected"></span>
+      <div id="container2" class="container affected">
+
+
+--- document_test.cc | dong 760 ---
+PATH: third_party\blink\renderer\core\dom\document_test.cc
+
+  auto* list = GetDocument().GetMediaQueryMatcher().MatchMedia(
+      "(prefers-color-scheme: dark)");
+  auto* listener = MakeGarbageCollected<PrefersColorSchemeTestListener>();
+  list->AddListener(listener);
+
+  EXPECT_FALSE(listener->IsNotified());
+
+  color_scheme_helper.SetPreferredColorScheme(
+      mojom::blink::PreferredColorScheme::kDark);
+
+  UpdateAllLifecyclePhasesForTest();
+  PageAnimator::ServiceScriptedAnimations(
+      base::TimeTicks(),
+      {{GetDocument().GetScriptedAnimationController(), false}});
+
+  EXPECT_TRUE(listener->IsNotified());
+}
+
+TEST_F(DocumentTest, FindInPageUkm) {
+  ukm::TestAutoSetUkmRecorder recorder;
+
+  EXPECT_EQ(recorder.entries_count(), 0u);
+  GetDocument().MarkHasFindInPageRequest();
+  EXPECT_EQ(recorder.entries_count(), 1u);
+  GetDocument().MarkHasFindInPageRequest();
+  EXPECT_EQ(recorder.entries_count(), 1u);
+
+  auto entries = recorder.GetEntriesByName("Blink.FindInPage");
+  EXPECT_EQ(entries.size(), 1u);
+  EXPECT_TRUE(ukm::TestUkmRecorder::EntryHasMetric(entries[0], "DidSearch"));
+  EXPECT_EQ(*ukm::TestUkmRecorder::GetEntryMetric(entries[0], "DidSearch"), 1);
+  EXPECT_FALSE(ukm::TestUkmRecorder::EntryHasMetric(
+      entries[0], "DidHaveRenderSubtreeMatch"));
+
+  GetDocument().MarkHasFindInPageContentVisibilityActiveMatch();
+  EXPECT_EQ(recorder.entries_count(), 2u);
+  GetDocument().MarkHasFindInPageContentVisibilityActiveMatch();
+  EXPECT_EQ(recorder.entries_count(), 2u);
+  entries = recorder.GetEntriesByName("Blink.FindInPage");
+  EXPECT_EQ(entries.size(), 2u);
+
+  EXPECT_TRUE(ukm::TestUkmRecorder::EntryHasMetric(entries[0], "DidSearch"));
+  EXPECT_EQ(*ukm::TestUkmRecorder::GetEntryMetric(entries[0], "DidSearch"), 1);
+  EXPECT_FALSE(ukm::TestUkmRecorder::EntryHasMetric(
+      entries[0], "DidHaveRenderSubtreeMatch"));
+
+
+
+--- web_page_popup_impl.cc | dong 153 ---
+PATH: third_party\blink\renderer\core\exported\web_page_popup_impl.cc
+      media_feature_overrides->GetPreferredColorScheme().has_value()) {
+    page->SetMediaFeatureOverride(
+        AtomicString("prefers-color-scheme"),
+        media_feature_overrides->GetPreferredColorScheme().value() ==
+                mojom::blink::PreferredColorScheme::kDark
+            ? "dark"
+            : "light");
+  }
+  return page;
+}
+
+WebPagePopup::Handle NextPopupHandle() {
+  static WebPagePopup::Handle::Generator generator;
+  return generator.GenerateNextId();
+}
+
+}  // namespace
+
+class PagePopupChromeClient final : public EmptyChromeClient {
+ public:
+  explicit PagePopupChromeClient(WebPagePopupImpl* popup) : popup_(popup) {}
+
+  void SetWindowRect(const gfx::Rect& rect, LocalFrame&) override {
+    popup_->SetWindowRect(rect);
+  }
+
+  bool IsPopup() override { return true; }
+
+  Element* GetPopupClientOwnerElement() override {
+    CHECK(popup_ && popup_->popup_client_);
+    return &popup_->popup_client_->OwnerElement();
+  }
+
+ private:
+  void CloseWindow() override {
+    // This skips past the PopupClient by calling ClosePopup() instead of
+    // Cancel().
+    popup_->ClosePopup();
+  }
+
+  gfx::Rect RootWindowRect(LocalFrame&) override {
+    // There is only one frame/widget in a WebPagePopup, so we can ignore the
+    // param.
+    return popup_->WindowRectInScreen();
+  }
+
+  gfx::Rect LocalRootToScreenDIPs(const gfx::Rect& rect_in_local_root,
+
+
+--- html_meta_element_test.cc | dong 288 ---
+PATH: third_party\blink\renderer\core\html\html_meta_element_test.cc
+
+  auto* media_query = GetDocument().GetMediaQueryMatcher().MatchMedia(
+      "(prefers-color-scheme: dark)");
+  EXPECT_TRUE(media_query->matches());
+  GetDocument().GetSettings()->SetForceDarkModeEnabled(true);
+  EXPECT_TRUE(media_query->matches());
+
+  GetDocument().head()->AppendChild(CreateColorSchemeMeta("light"));
+  EXPECT_TRUE(media_query->matches());
+
+  SetColorScheme("dark");
+  EXPECT_TRUE(media_query->matches());
+
+  SetColorScheme("light dark");
+  EXPECT_TRUE(media_query->matches());
+}
+
+TEST_F(HTMLMetaElementTest, ReferrerPolicyWithoutContent) {
+  GetDocument().head()->SetInnerHTMLWithoutTrustedTypes(R"HTML(
+    <meta name="referrer" content="strict-origin">
+    <meta name="referrer" >
+  )HTML");
+  EXPECT_EQ(network::mojom::ReferrerPolicy::kStrictOrigin,
+            GetFrame().DomWindow()->GetReferrerPolicy());
+  EXPECT_EQ(network::mojom::ReferrerPolicy::kStrictOrigin,
+            GetFrame().DomWindow()->GetPolicyContainer()->GetReferrerPolicy());
+}
+
+TEST_F(HTMLMetaElementTest, ReferrerPolicyUpdatesPolicyContainer) {
+  GetDocument().head()->SetInnerHTMLWithoutTrustedTypes(R"HTML(
+    <meta name="referrer" content="strict-origin">
+  )HTML");
+  EXPECT_EQ(network::mojom::ReferrerPolicy::kStrictOrigin,
+            GetFrame().DomWindow()->GetReferrerPolicy());
+  EXPECT_EQ(network::mojom::ReferrerPolicy::kStrictOrigin,
+            GetFrame().DomWindow()->GetPolicyContainer()->GetReferrerPolicy());
+}
+
+// This tests whether Web Monetization counter is properly triggered.
+TEST_F(HTMLMetaElementTest, WebMonetizationCounter) {
+  // <meta> elements that don't have name equal to "monetization" or that lack
+  // a content attribute are not counted.
+  GetDocument().head()->SetInnerHTMLWithoutTrustedTypes(R"HTML(
+    <meta name="color-scheme" content="dark">
+    <meta name="monetization">
+  )HTML");
+  EXPECT_FALSE(
+
+
+--- inspector_emulation_agent.cc | dong 387 ---
+PATH: third_party\blink\renderer\core\inspector\inspector_emulation_agent.cc
+    auto const& forced_colors_value =
+        emulated_media_features_.Get("forced-colors");
+    auto const& prefers_color_scheme_value =
+        emulated_media_features_.Get("prefers-color-scheme");
+
+    if (forced_colors_value == "active") {
+      if (!forced_colors_override_) {
+        initial_system_forced_colors_state_ =
+            GetWebViewImpl()->GetPage()->GetSettings().GetInForcedColors();
+      }
+      forced_colors_override_ = true;
+      bool is_dark_mode = false;
+      if (prefers_color_scheme_value.empty()) {
+        is_dark_mode = GetWebViewImpl()
+                           ->GetPage()
+                           ->GetSettings()
+                           .GetPreferredColorScheme() ==
+                       mojom::blink::PreferredColorScheme::kDark;
+      } else {
+        is_dark_mode = prefers_color_scheme_value == "dark";
+      }
+      GetWebViewImpl()->GetPage()->EmulateForcedColors(is_dark_mode);
+      GetWebViewImpl()->GetPage()->GetSettings().SetInForcedColors(true);
+    } else if (forced_colors_value == "none") {
+      if (!forced_colors_override_) {
+        initial_system_forced_colors_state_ =
+            GetWebViewImpl()->GetPage()->GetSettings().GetInForcedColors();
+      }
+      forced_colors_override_ = true;
+      GetWebViewImpl()->GetPage()->DisableEmulatedForcedColors();
+      GetWebViewImpl()->GetPage()->GetSettings().SetInForcedColors(false);
+    } else if (forced_colors_override_) {
+      GetWebViewImpl()->GetPage()->DisableEmulatedForcedColors();
+      GetWebViewImpl()->GetPage()->GetSettings().SetInForcedColors(
+          initial_system_forced_colors_state_);
+    }
+
+    for (const String& feature : emulated_media_features_.Keys()) {
+      auto const& value = emulated_media_features_.Get(feature);
+      GetWebViewImpl()->GetPage()->SetMediaFeatureOverride(
+          AtomicString(feature), value);
+    }
+
+    if (forced_colors_override_) {
+      blink::SystemColorsChanged();
+
+      if (forced_colors_value != "none" && forced_colors_value != "active") {
+
+
+--- inspector_emulation_agent.cc | dong 388 ---
+PATH: third_party\blink\renderer\core\inspector\inspector_emulation_agent.cc
+        emulated_media_features_.Get("forced-colors");
+    auto const& prefers_color_scheme_value =
+        emulated_media_features_.Get("prefers-color-scheme");
+
+    if (forced_colors_value == "active") {
+      if (!forced_colors_override_) {
+        initial_system_forced_colors_state_ =
+            GetWebViewImpl()->GetPage()->GetSettings().GetInForcedColors();
+      }
+      forced_colors_override_ = true;
+      bool is_dark_mode = false;
+      if (prefers_color_scheme_value.empty()) {
+        is_dark_mode = GetWebViewImpl()
+                           ->GetPage()
+                           ->GetSettings()
+                           .GetPreferredColorScheme() ==
+                       mojom::blink::PreferredColorScheme::kDark;
+      } else {
+        is_dark_mode = prefers_color_scheme_value == "dark";
+      }
+      GetWebViewImpl()->GetPage()->EmulateForcedColors(is_dark_mode);
+      GetWebViewImpl()->GetPage()->GetSettings().SetInForcedColors(true);
+    } else if (forced_colors_value == "none") {
+      if (!forced_colors_override_) {
+        initial_system_forced_colors_state_ =
+            GetWebViewImpl()->GetPage()->GetSettings().GetInForcedColors();
+      }
+      forced_colors_override_ = true;
+      GetWebViewImpl()->GetPage()->DisableEmulatedForcedColors();
+      GetWebViewImpl()->GetPage()->GetSettings().SetInForcedColors(false);
+    } else if (forced_colors_override_) {
+      GetWebViewImpl()->GetPage()->DisableEmulatedForcedColors();
+      GetWebViewImpl()->GetPage()->GetSettings().SetInForcedColors(
+          initial_system_forced_colors_state_);
+    }
+
+    for (const String& feature : emulated_media_features_.Keys()) {
+      auto const& value = emulated_media_features_.Get(feature);
+      GetWebViewImpl()->GetPage()->SetMediaFeatureOverride(
+          AtomicString(feature), value);
+    }
+
+    if (forced_colors_override_) {
+      blink::SystemColorsChanged();
+
+      if (forced_colors_value != "none" && forced_colors_value != "active") {
+        forced_colors_override_ = false;
+
+
+--- inspector_emulation_agent.cc | dong 397 ---
+PATH: third_party\blink\renderer\core\inspector\inspector_emulation_agent.cc
+      forced_colors_override_ = true;
+      bool is_dark_mode = false;
+      if (prefers_color_scheme_value.empty()) {
+        is_dark_mode = GetWebViewImpl()
+                           ->GetPage()
+                           ->GetSettings()
+                           .GetPreferredColorScheme() ==
+                       mojom::blink::PreferredColorScheme::kDark;
+      } else {
+        is_dark_mode = prefers_color_scheme_value == "dark";
+      }
+      GetWebViewImpl()->GetPage()->EmulateForcedColors(is_dark_mode);
+      GetWebViewImpl()->GetPage()->GetSettings().SetInForcedColors(true);
+    } else if (forced_colors_value == "none") {
+      if (!forced_colors_override_) {
+        initial_system_forced_colors_state_ =
+            GetWebViewImpl()->GetPage()->GetSettings().GetInForcedColors();
+      }
+      forced_colors_override_ = true;
+      GetWebViewImpl()->GetPage()->DisableEmulatedForcedColors();
+      GetWebViewImpl()->GetPage()->GetSettings().SetInForcedColors(false);
+    } else if (forced_colors_override_) {
+      GetWebViewImpl()->GetPage()->DisableEmulatedForcedColors();
+      GetWebViewImpl()->GetPage()->GetSettings().SetInForcedColors(
+          initial_system_forced_colors_state_);
+    }
+
+    for (const String& feature : emulated_media_features_.Keys()) {
+      auto const& value = emulated_media_features_.Get(feature);
+      GetWebViewImpl()->GetPage()->SetMediaFeatureOverride(
+          AtomicString(feature), value);
+    }
+
+    if (forced_colors_override_) {
+      blink::SystemColorsChanged();
+
+      if (forced_colors_value != "none" && forced_colors_value != "active") {
+        forced_colors_override_ = false;
+      }
+    }
+  }
+
+  for (const String& feature : old_emulated_media_features_keys) {
+    auto const& value = emulated_media_features_.Get(feature);
+    if (!value) {
+      GetWebViewImpl()->GetPage()->SetMediaFeatureOverride(
+          AtomicString(feature), "");
+
+
+--- inspector_emulation_agent.cc | dong 404 ---
+PATH: third_party\blink\renderer\core\inspector\inspector_emulation_agent.cc
+                       mojom::blink::PreferredColorScheme::kDark;
+      } else {
+        is_dark_mode = prefers_color_scheme_value == "dark";
+      }
+      GetWebViewImpl()->GetPage()->EmulateForcedColors(is_dark_mode);
+      GetWebViewImpl()->GetPage()->GetSettings().SetInForcedColors(true);
+    } else if (forced_colors_value == "none") {
+      if (!forced_colors_override_) {
+        initial_system_forced_colors_state_ =
+            GetWebViewImpl()->GetPage()->GetSettings().GetInForcedColors();
+      }
+      forced_colors_override_ = true;
+      GetWebViewImpl()->GetPage()->DisableEmulatedForcedColors();
+      GetWebViewImpl()->GetPage()->GetSettings().SetInForcedColors(false);
+    } else if (forced_colors_override_) {
+      GetWebViewImpl()->GetPage()->DisableEmulatedForcedColors();
+      GetWebViewImpl()->GetPage()->GetSettings().SetInForcedColors(
+          initial_system_forced_colors_state_);
+    }
+
+    for (const String& feature : emulated_media_features_.Keys()) {
+      auto const& value = emulated_media_features_.Get(feature);
+      GetWebViewImpl()->GetPage()->SetMediaFeatureOverride(
+          AtomicString(feature), value);
+    }
+
+    if (forced_colors_override_) {
+      blink::SystemColorsChanged();
+
+      if (forced_colors_value != "none" && forced_colors_value != "active") {
+        forced_colors_override_ = false;
+      }
+    }
+  }
+
+  for (const String& feature : old_emulated_media_features_keys) {
+    auto const& value = emulated_media_features_.Get(feature);
+    if (!value) {
+      GetWebViewImpl()->GetPage()->SetMediaFeatureOverride(
+          AtomicString(feature), "");
+    }
+  }
+
+  return response;
+}
+
+protocol::Response InspectorEmulationAgent::setEmulatedVisionDeficiency(
+
+
+--- frame_fetch_context_test.cc | dong 1222 ---
+PATH: third_party\blink\renderer\core\loader\frame_fetch_context_test.cc
+      "ch-dpr *; ch-device-memory *; ch-downlink *; ch-ect *; ch-rtt *; ch-ua "
+      "*; ch-ua-arch *; ch-ua-platform *; ch-ua-platform-version *; "
+      "ch-ua-model *; ch-viewport-width *; ch-width *; ch-prefers-color-scheme "
+      "*; ch-prefers-reduced-motion *; ch-prefers-reduced-transparency *");
+  document->GetSettings()->SetScriptEnabled(true);
+  ClientHintsPreferences preferences;
+  preferences.SetShouldSend(
+      network::mojom::WebClientHintsType::kDeviceMemory_DEPRECATED);
+  preferences.SetShouldSend(network::mojom::WebClientHintsType::kDeviceMemory);
+  preferences.SetShouldSend(
+      network::mojom::WebClientHintsType::kDpr_DEPRECATED);
+  preferences.SetShouldSend(network::mojom::WebClientHintsType::kDpr);
+  preferences.SetShouldSend(
+      network::mojom::WebClientHintsType::kResourceWidth_DEPRECATED);
+  preferences.SetShouldSend(network::mojom::WebClientHintsType::kResourceWidth);
+  preferences.SetShouldSend(
+      network::mojom::WebClientHintsType::kViewportWidth_DEPRECATED);
+  preferences.SetShouldSend(network::mojom::WebClientHintsType::kViewportWidth);
+  preferences.SetShouldSend(
+      network::mojom::WebClientHintsType::kRtt_DEPRECATED);
+  preferences.SetShouldSend(
+      network::mojom::WebClientHintsType::kDownlink_DEPRECATED);
+  preferences.SetShouldSend(
+      network::mojom::WebClientHintsType::kEct_DEPRECATED);
+  preferences.SetShouldSend(network::mojom::WebClientHintsType::kUA);
+  preferences.SetShouldSend(network::mojom::WebClientHintsType::kUAArch);
+  preferences.SetShouldSend(
+      network::mojom::WebClientHintsType::kUAPlatformVersion);
+  preferences.SetShouldSend(network::mojom::WebClientHintsType::kUAModel);
+  preferences.SetShouldSend(
+      network::mojom::WebClientHintsType::kPrefersColorScheme);
+  preferences.SetShouldSend(
+      network::mojom::WebClientHintsType::kPrefersReducedMotion);
+  preferences.SetShouldSend(
+      network::mojom::WebClientHintsType::kPrefersReducedTransparency);
+  ApproximatedDeviceMemory::SetPhysicalMemoryMBForTesting(4096);
+  document->GetFrame()->GetClientHintsPreferences().UpdateFrom(preferences);
+
+  // Verify that all client hints are sent to a third-party origin, with this
+  // permissions policy header.
+  ExpectHeader("https://www.example.net/1.gif", "DPR", true, "1");
+  ExpectHeader("https://www.example.net/1.gif", "Sec-CH-DPR", true, "1");
+  ExpectHeader("https://www.example.net/1.gif", "Device-Memory", true, "4");
+  ExpectHeader("https://www.example.net/1.gif", "Sec-CH-Device-Memory", true,
+               "4");
+
+  ExpectHeader("https://www.example.net/1.gif", "Sec-CH-UA", true, "");
+
+
+--- page.cc | dong 1479 ---
+PATH: third_party\blink\renderer\core\page\page.cc
+
+  media_feature_overrides_->SetOverride(media_feature, value, document);
+  if (media_feature == "prefers-color-scheme" ||
+      media_feature == "forced-colors")
+    SettingsChanged(ChangeType::kColorScheme);
+  else
+    SettingsChanged(ChangeType::kMediaQuery);
+}
+
+void Page::ClearMediaFeatureOverrides() {
+  media_feature_overrides_.reset();
+  SettingsChanged(ChangeType::kMediaQuery);
+  SettingsChanged(ChangeType::kColorScheme);
+}
+
+void Page::SetPreferenceOverride(const AtomicString& media_feature,
+                                 const String& value) {
+  if (!preference_overrides_) {
+    if (value.empty()) {
+      return;
+    }
+    preference_overrides_ = std::make_unique<PreferenceOverrides>();
+  }
+
+  const Document* document = nullptr;
+  if (auto* local_frame = DynamicTo<LocalFrame>(MainFrame())) {
+    document = local_frame->GetDocument();
+  }
+
+  preference_overrides_->SetOverride(media_feature, value, document);
+  if (media_feature == "prefers-color-scheme") {
+    SettingsChanged(ChangeType::kColorScheme);
+  } else {
+    SettingsChanged(ChangeType::kMediaQuery);
+  }
+}
+
+void Page::ClearPreferenceOverrides() {
+  preference_overrides_.reset();
+  SettingsChanged(ChangeType::kMediaQuery);
+  SettingsChanged(ChangeType::kColorScheme);
+}
+
+void Page::SetVisionDeficiency(VisionDeficiency new_vision_deficiency) {
+  if (new_vision_deficiency != vision_deficiency_) {
+    vision_deficiency_ = new_vision_deficiency;
+    SettingsChanged(ChangeType::kVisionDeficiency);
+
+
+--- page.cc | dong 1507 ---
+PATH: third_party\blink\renderer\core\page\page.cc
+
+  preference_overrides_->SetOverride(media_feature, value, document);
+  if (media_feature == "prefers-color-scheme") {
+    SettingsChanged(ChangeType::kColorScheme);
+  } else {
+    SettingsChanged(ChangeType::kMediaQuery);
+  }
+}
+
+void Page::ClearPreferenceOverrides() {
+  preference_overrides_.reset();
+  SettingsChanged(ChangeType::kMediaQuery);
+  SettingsChanged(ChangeType::kColorScheme);
+}
+
+void Page::SetVisionDeficiency(VisionDeficiency new_vision_deficiency) {
+  if (new_vision_deficiency != vision_deficiency_) {
+    vision_deficiency_ = new_vision_deficiency;
+    SettingsChanged(ChangeType::kVisionDeficiency);
+  }
+}
+
+void Page::SetPageLifecycleState(
+    mojom::blink::PageLifecycleStatePtr lifecycle_state) {
+  lifecycle_state_ = std::move(lifecycle_state);
+}
+
+void Page::Animate(base::TimeTicks monotonic_frame_begin_time) {
+  GetAutoscrollController().Animate();
+  Animator().ServiceScriptedAnimations(monotonic_frame_begin_time);
+  // The ValidationMessage overlay manages its own internal Page that isn't
+  // hooked up the normal BeginMainFrame flow, so we manually tick its
+  // animations here.
+  GetValidationMessageClient().ServiceScriptedAnimations(
+      monotonic_frame_begin_time);
+}
+
+void Page::UpdateLifecycle(LocalFrame& root,
+                           WebLifecycleUpdate requested_update,
+                           DocumentUpdateReason reason) {
+  if (requested_update == WebLifecycleUpdate::kLayout) {
+    Animator().UpdateLifecycleToLayoutClean(root, reason);
+  } else if (requested_update == WebLifecycleUpdate::kPrePaint) {
+    Animator().UpdateAllLifecyclePhasesExceptPaint(root, reason);
+  } else {
+    Animator().UpdateAllLifecyclePhases(root, reason);
+  }
+
+
+--- client_hints_preferences_test.cc | dong 32 ---
+PATH: third_party\blink\renderer\platform\loader\fetch\client_hints_preferences_test.cc
+    bool expectation_ua_model;
+    bool expectation_ua_full_version;
+    bool expectation_prefers_color_scheme;
+    bool expectation_prefers_reduced_motion;
+    bool expectation_prefers_reduced_transparency;
+  } cases[] = {
+      {"width, sec-ch-width, dpr, sec-ch-dpr, viewportWidth, "
+       "sec-ch-viewportWidth",
+       true, true, true, true, false, false, false, false, false, false, false,
+       false, false, false, false, false, false},
+      {"WiDtH, sEc-ch-WiDtH, dPr, sec-cH-dPr, viewport-width, "
+       "sec-ch-viewport-width, rtt, downlink, ect, "
+       "sec-ch-prefers-color-scheme, sec-ch-prefers-reduced-motion, "
+       "sec-ch-prefers-reduced-transparency",
+       true, true, true, true, true, true, true, true, true, false, false,
+       false, false, false, true, true, true},
+      {"WiDtH, dPr, viewport-width, rtt, downlink, effective-connection-type",
+       true, false, true, false, true, false, true, true, false, false, false,
+       false, false, false, false, false, false},
+      {"sec-ch-WIDTH, DPR, VIWEPROT-Width", false, true, true, false, false,
+       false, false, false, false, false, false, false, false, false, false,
+       false, false},
+      {"sec-ch-VIewporT-Width, wutwut, width", true, false, false, false, false,
+       true, false, false, false, false, false, false, false, false, false,
+       false, false},
+      {"dprw", false, false, false, false, false, false, false, false, false,
+       false, false, false, false, false, false, false, false},
+      {"DPRW", false, false, false, false, false, false, false, false, false,
+       false, false, false, false, false, false, false, false},
+      {"sec-ch-ua", false, false, false, false, false, false, false, false,
+       false, true, false, false, false, false, false, false, false},
+      {"sec-ch-ua-arch", false, false, false, false, false, false, false, false,
+       false, false, true, false, false, false, false, false, false},
+      {"sec-ch-ua-platform", false, false, false, false, false, false, false,
+       false, false, false, false, true, false, false, false, false, false},
+      {"sec-ch-ua-model", false, false, false, false, false, false, false,
+       false, false, false, false, false, true, false, false, false, false},
+      {"sec-ch-ua, sec-ch-ua-arch, sec-ch-ua-platform, sec-ch-ua-model, "
+       "sec-ch-ua-full-version",
+       false, false, false, false, false, false, false, false, false, true,
+       true, true, true, true, false, false, false},
+  };
+
+  for (const auto& test_case : cases) {
+    SCOPED_TRACE(testing::Message() << test_case.header_value);
+    ClientHintsPreferences preferences;
+    const KURL kurl(String::FromUTF8("https://www.google.com/"));
+
+
+--- client_hints_preferences_test.cc | dong 42 ---
+PATH: third_party\blink\renderer\platform\loader\fetch\client_hints_preferences_test.cc
+      {"WiDtH, sEc-ch-WiDtH, dPr, sec-cH-dPr, viewport-width, "
+       "sec-ch-viewport-width, rtt, downlink, ect, "
+       "sec-ch-prefers-color-scheme, sec-ch-prefers-reduced-motion, "
+       "sec-ch-prefers-reduced-transparency",
+       true, true, true, true, true, true, true, true, true, false, false,
+       false, false, false, true, true, true},
+      {"WiDtH, dPr, viewport-width, rtt, downlink, effective-connection-type",
+       true, false, true, false, true, false, true, true, false, false, false,
+       false, false, false, false, false, false},
+      {"sec-ch-WIDTH, DPR, VIWEPROT-Width", false, true, true, false, false,
+       false, false, false, false, false, false, false, false, false, false,
+       false, false},
+      {"sec-ch-VIewporT-Width, wutwut, width", true, false, false, false, false,
+       true, false, false, false, false, false, false, false, false, false,
+       false, false},
+      {"dprw", false, false, false, false, false, false, false, false, false,
+       false, false, false, false, false, false, false, false},
+      {"DPRW", false, false, false, false, false, false, false, false, false,
+       false, false, false, false, false, false, false, false},
+      {"sec-ch-ua", false, false, false, false, false, false, false, false,
+       false, true, false, false, false, false, false, false, false},
+      {"sec-ch-ua-arch", false, false, false, false, false, false, false, false,
+       false, false, true, false, false, false, false, false, false},
+      {"sec-ch-ua-platform", false, false, false, false, false, false, false,
+       false, false, false, false, true, false, false, false, false, false},
+      {"sec-ch-ua-model", false, false, false, false, false, false, false,
+       false, false, false, false, false, true, false, false, false, false},
+      {"sec-ch-ua, sec-ch-ua-arch, sec-ch-ua-platform, sec-ch-ua-model, "
+       "sec-ch-ua-full-version",
+       false, false, false, false, false, false, false, false, false, true,
+       true, true, true, true, false, false, false},
+  };
+
+  for (const auto& test_case : cases) {
+    SCOPED_TRACE(testing::Message() << test_case.header_value);
+    ClientHintsPreferences preferences;
+    const KURL kurl(String::FromUTF8("https://www.google.com/"));
+    bool did_update = preferences.UpdateFromMetaCH(
+        test_case.header_value, kurl, nullptr,
+        network::MetaCHType::HttpEquivAcceptCH,
+        /*is_doc_preloader=*/true, /*is_sync_parser=*/true);
+    EXPECT_TRUE(did_update);
+    EXPECT_EQ(
+        test_case.expectation_resource_width_DEPRECATED,
+        preferences.ShouldSend(
+            network::mojom::WebClientHintsType::kResourceWidth_DEPRECATED));
+    EXPECT_EQ(test_case.expectation_resource_width,
+
+
+--- client_hints_preferences_test.cc | dong 121 ---
+PATH: third_party\blink\renderer\platform\loader\fetch\client_hints_preferences_test.cc
+        test_case.expectation_ua_model,
+        preferences.ShouldSend(network::mojom::WebClientHintsType::kUAModel));
+    EXPECT_EQ(test_case.expectation_prefers_color_scheme,
+              preferences.ShouldSend(
+                  network::mojom::WebClientHintsType::kPrefersColorScheme));
+    EXPECT_EQ(test_case.expectation_prefers_reduced_motion,
+              preferences.ShouldSend(
+                  network::mojom::WebClientHintsType::kPrefersReducedMotion));
+    EXPECT_EQ(
+        test_case.expectation_prefers_reduced_transparency,
+        preferences.ShouldSend(
+            network::mojom::WebClientHintsType::kPrefersReducedTransparency));
+
+    // Calling UpdateFromMetaCH with an invalid header should
+    // have no impact on client hint preferences.
+    did_update = preferences.UpdateFromMetaCH(
+        "1, 42,", kurl, nullptr, network::MetaCHType::HttpEquivAcceptCH,
+        /*is_doc_preloader=*/true, /*is_sync_parser=*/true);
+    EXPECT_FALSE(did_update);
+    EXPECT_EQ(
+        test_case.expectation_resource_width_DEPRECATED,
+        preferences.ShouldSend(
+            network::mojom::WebClientHintsType::kResourceWidth_DEPRECATED));
+    EXPECT_EQ(test_case.expectation_resource_width,
+              preferences.ShouldSend(
+                  network::mojom::WebClientHintsType::kResourceWidth));
+    EXPECT_EQ(test_case.expectation_dpr_DEPRECATED,
+              preferences.ShouldSend(
+                  network::mojom::WebClientHintsType::kDpr_DEPRECATED));
+    EXPECT_EQ(test_case.expectation_dpr,
+              preferences.ShouldSend(network::mojom::WebClientHintsType::kDpr));
+    EXPECT_EQ(
+        test_case.expectation_viewport_width_DEPRECATED,
+        preferences.ShouldSend(
+            network::mojom::WebClientHintsType::kViewportWidth_DEPRECATED));
+    EXPECT_EQ(test_case.expectation_viewport_width,
+              preferences.ShouldSend(
+                  network::mojom::WebClientHintsType::kViewportWidth));
+
+    // Calling UpdateFromMetaCH with empty header is also a
+    // no-op, since ClientHintsPreferences only deals with meta tags, and
+    // hence merge.
+    did_update = preferences.UpdateFromMetaCH(
+        "", kurl, nullptr, network::MetaCHType::HttpEquivAcceptCH,
+        /*is_doc_preloader=*/true, /*is_sync_parser=*/true);
+    EXPECT_TRUE(did_update);
+    EXPECT_EQ(
+
+
+--- client_hints_preferences_test.cc | dong 363 ---
+PATH: third_party\blink\renderer\platform\loader\fetch\client_hints_preferences_test.cc
+    bool expect_ua_model;
+    bool expect_ua_full_version;
+    bool expect_prefers_color_scheme;
+    bool expect_prefers_reduced_motion;
+    bool expect_prefers_reduced_transparency;
+  } test_cases[] = {
+      {"width, sec-ch-width, dpr, sec-ch-dpr, viewportWidth, "
+       "sec-ch-viewportWidth, sec-ch-prefers-color-scheme, "
+       "sec-ch-prefers-reduced-motion, sec-ch-prefers-reduced-transparency",
+       false,
+       false,
+       true,
+       true,
+       true,
+       true,
+       false,
+       false,
+       false,
+       false,
+       false,
+       false,
+       false,
+       false,
+       false,
+       false,
+       true,
+       true,
+       true},
+      {"width, dpr, viewportWidth",
+       false,
+       false,
+       true,
+       false,
+       true,
+       false,
+       false,
+       false,
+       false,
+       false,
+       false,
+       false,
+       false,
+       false,
+       false,
+       false,
+       false,
+       false,
+
+
+--- client_hints_preferences_test.cc | dong 368 ---
+PATH: third_party\blink\renderer\platform\loader\fetch\client_hints_preferences_test.cc
+  } test_cases[] = {
+      {"width, sec-ch-width, dpr, sec-ch-dpr, viewportWidth, "
+       "sec-ch-viewportWidth, sec-ch-prefers-color-scheme, "
+       "sec-ch-prefers-reduced-motion, sec-ch-prefers-reduced-transparency",
+       false,
+       false,
+       true,
+       true,
+       true,
+       true,
+       false,
+       false,
+       false,
+       false,
+       false,
+       false,
+       false,
+       false,
+       false,
+       false,
+       true,
+       true,
+       true},
+      {"width, dpr, viewportWidth",
+       false,
+       false,
+       true,
+       false,
+       true,
+       false,
+       false,
+       false,
+       false,
+       false,
+       false,
+       false,
+       false,
+       false,
+       false,
+       false,
+       false,
+       false,
+       false},
+      {"width, sec-ch-width, dpr, sec-ch-dpr, viewportWidth",
+       false,
+       false,
+       true,
+
+
+--- client_hints_preferences_test.cc | dong 609 ---
+PATH: third_party\blink\renderer\platform\loader\fetch\client_hints_preferences_test.cc
+        test.expect_ua_model,
+        enabled_types.IsEnabled(network::mojom::WebClientHintsType::kUAModel));
+    EXPECT_EQ(test.expect_prefers_color_scheme,
+              enabled_types.IsEnabled(
+                  network::mojom::WebClientHintsType::kPrefersColorScheme));
+    EXPECT_EQ(test.expect_prefers_reduced_motion,
+              enabled_types.IsEnabled(
+                  network::mojom::WebClientHintsType::kPrefersReducedMotion));
+    EXPECT_EQ(
+        test.expect_prefers_reduced_transparency,
+        enabled_types.IsEnabled(
+            network::mojom::WebClientHintsType::kPrefersReducedTransparency));
+  }
+}
+
+}  // namespace blink
+
+
+============================================================
+[P2] performance_now  (performance.now timing)
+============================================================
+--- performance.cc | dong 1278 ---
+PATH: third_party\blink\renderer\core\timing\performance.cc
+}
+
+DOMHighResTimeStamp Performance::now() const {
+  return MonotonicTimeToDOMHighResTimeStamp(tick_clock_->NowTicks());
+}
+
+// static
+bool Performance::CanExposeNode(Node* node) {
+  if (!node || !node->isConnected() || node->IsInShadowTree())
+    return false;
+
+  // Do not expose |node| when the document is not 'fully active'.
+  const Document& document = node->GetDocument();
+  if (!document.IsActive() || !document.GetFrame())
+    return false;
+
+  return true;
+}
+
+void Performance::AddPaintTiming(PerformancePaintTiming::PaintType type,
+                                 const DOMPaintTimingInfo& paint_timing_info) {
+  PerformancePaintTiming* entry = MakeGarbageCollected<PerformancePaintTiming>(
+      type, paint_timing_info, DynamicTo<LocalDOMWindow>(GetExecutionContext()),
+      NavigationId());
+  DCHECK((type == PerformancePaintTiming::PaintType::kFirstPaint) ||
+         (type == PerformancePaintTiming::PaintType::kFirstContentfulPaint));
+
+  if (paint_entries_timing_.size() < kDefaultPaintEntriesBufferSize) {
+    InsertEntryIntoSortedBuffer(paint_entries_timing_, *entry, kRecordSwaps);
+  } else {
+    ++(dropped_entries_count_map_.find(PerformanceEntry::kPaint)->value);
+  }
+  NotifyObserversOfEntry(*entry);
+}
+
+ScriptObject Performance::toJSONForBinding(ScriptState* script_state) const {
+  V8ObjectBuilder result(script_state);
+  BuildJSONValue(result);
+  return result.ToScriptObject();
+}
+
+void Performance::BuildJSONValue(V8ObjectBuilder& builder) const {
+  builder.AddNumber("timeOrigin", timeOrigin());
+  // |memory| is not part of the spec, omitted.
+}
+
+// Insert entry in PerformanceEntryVector while maintaining sorted order (via
+
+
+============================================================
+[P3] timeOrigin  (performance.timeOrigin)
+============================================================
+--- performance.cc | dong 341 ---
+PATH: third_party\blink\renderer\core\timing\performance.cc
+}
+
+DOMHighResTimeStamp Performance::timeOrigin() const {
+  DCHECK(!time_origin_.is_null());
+  base::TimeDelta time_origin_from_zero_monotonic =
+      time_origin_ - base::TimeTicks();
+  return ClampTimeResolution(
+      unix_at_zero_monotonic_ + time_origin_from_zero_monotonic,
+      cross_origin_isolated_capability_);
+}
+
+PerformanceEntryVector Performance::getEntries() {
+  return GetEntriesForCurrentFrame();
+}
+
+PerformanceEntryVector Performance::GetEntriesForCurrentFrame(
+    const AtomicString& maybe_name) {
+  PerformanceEntryVector entries;
+
+  entries = MergePerformanceEntryVectors(entries, resource_timing_buffer_,
+                                         maybe_name);
+  if (first_input_timing_ && CheckName(first_input_timing_, maybe_name)) {
+    InsertEntryIntoSortedBuffer(entries, *first_input_timing_,
+                                kDoNotRecordSwaps);
+  }
+  // This extra checking is needed when WorkerPerformance
+  // calls this method.
+  if (navigation_timing_ && CheckName(navigation_timing_, maybe_name)) {
+    InsertEntryIntoSortedBuffer(entries, *navigation_timing_,
+                                kDoNotRecordSwaps);
+  }
+
+  if (paint_entries_timing_.size()) {
+    entries = MergePerformanceEntryVectors(entries, paint_entries_timing_,
+                                           maybe_name);
+  }
+
+  if (RuntimeEnabledFeatures::NavigationIdEnabled(GetExecutionContext())) {
+    entries = MergePerformanceEntryVectors(
+        entries, back_forward_cache_restoration_buffer_, maybe_name);
+  }
+
+  if (RuntimeEnabledFeatures::SoftNavigationHeuristicsEnabled(
+          GetExecutionContext()) &&
+      soft_navigation_buffer_.size()) {
+    UseCounter::Count(GetExecutionContext(),
+                      WebFeature::kSoftNavigationHeuristics);
+
+
+============================================================
+TONG KET: 91 ket qua, 0 target bi bo qua do het gio
