@@ -36,70 +36,78 @@ jobs:
       - name: Cắt đúng đoạn cần thiết
         shell: pwsh
         run: |
-          python -c "
-          import os, re
+          # Ghi script ra file riêng để tránh vấn đề working directory
+          $script = @'
+import os, re, sys
 
-          SRC = 'build/src'
-          OUT = 'audit_result.txt'
+SRC = r"build/src"
+OUT = r"audit_result.txt"
 
-          # File + keyword can tim
-          targets = [
-            ('third_party/blink/renderer/core/frame/navigator_concurrent_hardware.cc',       'hardwareConcurrency'),
-            ('third_party/blink/renderer/core/execution_context/navigator_base.cc',           'hardwareConcurrency'),
-            ('third_party/blink/renderer/modules/touch_events/navigator_touch_points.cc',     'maxTouchPoints'),
-            ('third_party/blink/renderer/core/frame/navigator.cc',                            'maxTouchPoints'),
-            ('third_party/blink/renderer/core/frame/navigator_device_memory.cc',              'deviceMemory'),
-            ('third_party/blink/renderer/core/frame/local_dom_window.cc',                     'devicePixelRatio'),
-            ('third_party/blink/renderer/core/frame/screen.cc',                               'devicePixelRatio'),
-            ('third_party/blink/renderer/modules/webgl/webgl_rendering_context_base.cc',      'getParameter'),
-            ('third_party/blink/renderer/core/frame/navigator_language.cc',                   'language'),
-            ('third_party/blink/renderer/modules/battery/battery_manager.cc',                 'level'),
-          ]
+targets = [
+  ("third_party/blink/renderer/core/frame/navigator_concurrent_hardware.cc",      "hardwareConcurrency"),
+  ("third_party/blink/renderer/core/execution_context/navigator_base.cc",          "hardwareConcurrency"),
+  ("third_party/blink/renderer/modules/touch_events/navigator_touch_points.cc",    "maxTouchPoints"),
+  ("third_party/blink/renderer/core/frame/navigator.cc",                           "maxTouchPoints"),
+  ("third_party/blink/renderer/core/frame/navigator_device_memory.cc",             "deviceMemory"),
+  ("third_party/blink/renderer/core/frame/local_dom_window.cc",                    "devicePixelRatio"),
+  ("third_party/blink/renderer/core/frame/screen.cc",                              "devicePixelRatio"),
+  ("third_party/blink/renderer/modules/webgl/webgl_rendering_context_base.cc",     "getParameter"),
+  ("third_party/blink/renderer/core/frame/navigator_language.cc",                  "language"),
+  ("third_party/blink/renderer/modules/battery/battery_manager.cc",                "level"),
+]
 
-          results = []
+results = []
 
-          for rel_path, keyword in targets:
-            full_path = os.path.join(SRC, rel_path)
-            filename  = os.path.basename(rel_path)
+for rel_path, keyword in targets:
+  full_path = os.path.join(SRC, rel_path)
+  filename  = os.path.basename(rel_path)
 
-            if not os.path.exists(full_path):
-              results.append(f'=== {filename} | {keyword} ===')
-              results.append('FILE KHONG TON TAI')
-              results.append('')
-              continue
+  if not os.path.exists(full_path):
+    results.append(f"=== {filename} | {keyword} ===")
+    results.append("FILE KHONG TON TAI")
+    results.append("")
+    continue
 
-            lines = open(full_path, encoding='utf-8', errors='replace').readlines()
+  lines = open(full_path, encoding="utf-8", errors="replace").readlines()
+  found = False
 
-            found = False
-            for i, line in enumerate(lines):
-              stripped = line.strip()
-              # Tim dong co keyword( - bo qua comment
-              if re.search(re.escape(keyword) + r'\s*\(', line) and not stripped.startswith('//'):
-                # Lay 40 dong xung quanh de thay du context
-                start   = max(0, i - 3)
-                end     = min(len(lines), i + 40)
-                snippet = ''.join(lines[start:end])
+  for i, line in enumerate(lines):
+    stripped = line.strip()
+    if re.search(re.escape(keyword) + r"\s*\(", line) and not stripped.startswith("//"):
+      start   = max(0, i - 3)
+      end     = min(len(lines), i + 40)
+      snippet = "".join(lines[start:end])
+      results.append(f"=== {filename} | {keyword} | dong {i+1} ===")
+      results.append(snippet)
+      results.append("--- HET DOAN ---")
+      results.append("")
+      found = True
 
-                results.append(f'=== {filename} | {keyword} | dong {i+1} ===')
-                results.append(snippet)
-                results.append('--- HET DOAN ---')
-                results.append('')
-                found = True
+  if not found:
+    results.append(f"=== {filename} | {keyword} ===")
+    results.append("KHONG TIM THAY KEYWORD")
+    results.append("")
 
-            if not found:
-              results.append(f'=== {filename} | {keyword} ===')
-              results.append('KHONG TIM THAY KEYWORD TRONG FILE')
-              results.append('')
+with open(OUT, "w", encoding="utf-8") as f:
+  f.write("\n".join(results))
 
-          with open(OUT, 'w', encoding='utf-8') as f:
-            f.write('\n'.join(results))
+print("DA GHI:", os.path.abspath(OUT))
+'@
+          $script | Out-File -FilePath audit_script.py -Encoding utf8
+          python audit_script.py
+          
+          # Xác nhận file tồn tại
+          if (Test-Path "audit_result.txt") {
+            Write-Host "FILE TON TAI, SIZE: $((Get-Item audit_result.txt).Length) bytes"
+          } else {
+            Write-Host "LOI: FILE KHONG DUOC TAO!"
+            exit 1
+          }
 
-          print('Xong! Ket qua luu vao', OUT)
-          "
-
-      - name: Upload kết quả
-        uses: actions/upload-artifact@v4
-        with:
-          name: audit-result
-          path: audit_result.txt
-          retention-days: 7
+      - name: Commit kết quả vào repo
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git add audit_result.txt
+          git commit -m "audit: cap nhat ket qua kiem tra source"
+          git push
