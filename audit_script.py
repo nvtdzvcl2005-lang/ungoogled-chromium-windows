@@ -1,54 +1,56 @@
 import os, re
 
-SRC = "build/src"
-OUT = "audit_result.txt"
+SRC   = "build/src/third_party/blink/renderer"
+OUT   = "audit_result.txt"
 
-targets = [
-    ("third_party/blink/renderer/core/frame/navigator_concurrent_hardware.cc",     "hardwareConcurrency"),
-    ("third_party/blink/renderer/core/execution_context/navigator_base.cc",         "hardwareConcurrency"),
-    ("third_party/blink/renderer/modules/touch_events/navigator_touch_points.cc",   "maxTouchPoints"),
-    ("third_party/blink/renderer/core/frame/navigator.cc",                          "maxTouchPoints"),
-    ("third_party/blink/renderer/core/frame/navigator_device_memory.cc",            "deviceMemory"),
-    ("third_party/blink/renderer/core/frame/local_dom_window.cc",                   "devicePixelRatio"),
-    ("third_party/blink/renderer/core/frame/screen.cc",                             "devicePixelRatio"),
-    ("third_party/blink/renderer/modules/webgl/webgl_rendering_context_base.cc",    "getParameter"),
-    ("third_party/blink/renderer/core/frame/navigator_language.cc",                 "language"),
-    ("third_party/blink/renderer/modules/battery/battery_manager.cc",               "level"),
-]
+KEYWORDS = {
+    "maxTouchPoints": r"maxTouchPoints\s*\(",
+}
 
 results = []
+results.append("QUET TOAN BO BLINK TIM maxTouchPoints")
+results.append("="*60)
+results.append("")
 
-for rel_path, keyword in targets:
-    full_path = os.path.join(SRC, rel_path)
-    filename  = os.path.basename(rel_path)
+found_count = 0
 
-    if not os.path.exists(full_path):
-        results.append("=== " + filename + " | " + keyword + " ===")
-        results.append("FILE KHONG TON TAI")
-        results.append("")
-        continue
+for root, dirs, files in os.walk(SRC):
+    # Bo qua thu muc test de giam nhieu
+    dirs[:] = [d for d in dirs if d not in ("tests", "testing", "test")]
 
-    lines = open(full_path, encoding="utf-8", errors="replace").readlines()
-    found = False
+    for fname in files:
+        if not fname.endswith(".cc"):
+            continue
 
-    for i, line in enumerate(lines):
-        stripped = line.strip()
-        if re.search(re.escape(keyword) + r"\s*\(", line) and not stripped.startswith("//"):
-            start   = max(0, i - 3)
-            end     = min(len(lines), i + 40)
-            snippet = "".join(lines[start:end])
-            results.append("=== " + filename + " | " + keyword + " | dong " + str(i+1) + " ===")
-            results.append(snippet)
-            results.append("--- HET DOAN ---")
-            results.append("")
-            found = True
+        fpath = os.path.join(root, fname)
+        try:
+            lines = open(fpath, encoding="utf-8", errors="replace").readlines()
+        except:
+            continue
 
-    if not found:
-        results.append("=== " + filename + " | " + keyword + " ===")
-        results.append("KHONG TIM THAY KEYWORD")
-        results.append("")
+        for keyword, pattern in KEYWORDS.items():
+            for i, line in enumerate(lines):
+                stripped = line.strip()
+                # Bo qua comment
+                if stripped.startswith("//"):
+                    continue
+                if re.search(pattern, line):
+                    start   = max(0, i - 2)
+                    end     = min(len(lines), i + 35)
+                    snippet = "".join(lines[start:end])
+                    rel     = os.path.relpath(fpath, "build/src")
+
+                    results.append(f"=== {fname} | {keyword} | dong {i+1} ===")
+                    results.append(f"PATH: {rel}")
+                    results.append(snippet)
+                    results.append("--- HET DOAN ---")
+                    results.append("")
+                    found_count += 1
+
+results.append("="*60)
+results.append(f"TONG KET: Tim thay {found_count} cho co maxTouchPoints")
 
 with open(OUT, "w", encoding="utf-8") as f:
     f.write("\n".join(results))
 
-print("DA GHI:", os.path.abspath(OUT))
+print(f"XONG! Tim thay {found_count} cho. Luu vao {os.path.abspath(OUT)}")
